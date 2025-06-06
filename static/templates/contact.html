@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block title %}Contact Us - Budget Tracker{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto bg-white rounded-xl shadow-2xl p-8 md:p-12 transform hover:scale-105 transition-transform duration-300 ease-in-out">
+    <div class="text-center mb-10">
+        <h1 class="text-5xl font-extrabold text-primary mb-4 animate-fade-in-down">Reach Out to Us!</h1>
+        <p class="text-lg text-gray-700 max-w-2xl mx-auto">
+            We'd love to hear from you! Your feedback helps us grow and improve Budget Tracker.
+            Feel free to send us a message or connect through our channels.
+        </p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-10 items-start">
+        <div class="flex flex-col items-center p-6 bg-gray-50 rounded-lg shadow-inner border border-gray-200">
+            <h2 class="text-3xl font-bold text-gray-800 mb-6">Meet Our Team</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div class="flex flex-col items-center text-center">
+                    <img src="{{ url_for('static', filename='vinc.png') }}" alt="Team Member 1" 
+                         class="w-32 h-32 rounded-full object-cover border-4 border-primary shadow-lg mb-3 transform hover:rotate-3 transition-transform duration-300">
+                    <h3 class="text-xl font-bold text-gray-800">Vince Nelmar Alobin</h3>
+                    <p class="text-md text-gray-600">Lead Developer</p>
+                </div>
+                <div class="flex flex-col items-center text-center">
+                    <img src="https://via.placeholder.com/150/0000FF/FFFFFF?text=Team+2" alt="Team Member 2" 
+                         class="w-32 h-32 rounded-full object-cover border-4 border-primary shadow-lg mb-3 transform hover:rotate-3 transition-transform duration-300">
+                    <h3 class="text-xl font-bold text-gray-800">Jane Doe</h3>
+                    <p class="text-md text-gray-600">Product Manager</p>
+                </div>
+                <div class="flex flex-col items-center text-center">
+                    <img src="https://via.placeholder.com/150/FF0000/FFFFFF?text=Team+3" alt="Team Member 3" 
+                         class="w-32 h-32 rounded-full object-cover border-4 border-primary shadow-lg mb-3 transform hover:rotate-3 transition-transform duration-300">
+                    <h3 class="text-xl font-bold text-gray-800">John Smith</h3>
+                    <p class="text-md text-gray-600">UX Designer</p>
+                </div>
+                <div class="flex flex-col items-center text-center">
+                    <img src="https://via.placeholder.com/150/008000/FFFFFF?text=Team+4" alt="Team Member 4" 
+                         class="w-32 h-32 rounded-full object-cover border-4 border-primary shadow-lg mb-3 transform hover:rotate-3 transition-transform duration-300">
+                    <h3 class="text-xl font-bold text-gray-800">Emily White</h3>
+                    <p class="text-md text-gray-600">Marketing Specialist</p>
+                </div>
+                <div class="flex flex-col items-center text-center">
+                    <img src="https://via.placeholder.com/150/FFFF00/000000?text=Team+5" alt="Team Member 5" 
+                         class="w-32 h-32 rounded-full object-cover border-4 border-primary shadow-lg mb-3 transform hover:rotate-3 transition-transform duration-300">
+                    <h3 class="text-xl font-bold text-gray-800">David Brown</h3>
+                    <p class="text-md text-gray-600">Community Manager</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="space-y-8 p-6 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-lg shadow-xl">
+            <div>
+                <h2 class="text-3xl font-bold text-blue-800 mb-3 flex items-center">
+                    <svg class="w-8 h-8 mr-3 text-blue-600" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"></path><path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"></path></svg>
+                    General Inquiries
+                </h2>
+                <p class="text-gray-700 text-lg">
+                    Email: <a href="mailto:info@budgettracker.com" class="text-primary hover:underline font-semibold transition-colors duration-200">info@budgettracker.com</a>
+                </p>
+            </div>
+            <div>
+                <h2 class="text-3xl font-bold text-green-800 mb-3 flex items-center">
+                    <svg class="w-8 h-8 mr-3 text-green-600" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.336-3.11c-.813-1.076-1.336-2.405-1.336-3.89C2 6.134 5.582 3 10 3s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clip-rule="evenodd"></path></svg>
+                    Support
+                </h2>
+                <p class="text-gray-700 text-lg">
+                    Email: <a href="mailto:support@budgettracker.com" class="text-primary hover:underline font-semibold transition-colors duration-200">support@budgettracker.com</a>
+                </p>
+                <p class="text-gray-700 text-lg mt-1">
+                    Phone: <span class="font-semibold">+1 (555) 123-4567</span>
+                </p>
+            </div>
+            <div>
+                <h2 class="text-3xl font-bold text-purple-800 mb-3 flex items-center">
+                    <svg class="w-8 h-8 mr-3 text-purple-600" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 2a4 4 0 00-4 4v2H3a2 2 0 00-2 2v6a2 2 0 002 2h14a2 2 0 002-2v-6a2 2 0 00-2-2h-3V6a4 4 0 00-4-4zm-4 4a2 2 0 012-2h4a2 2 0 012 2v2H6V6zm6 10H8v-2h4v2z" clip-rule="evenodd"></path></svg>
+                    Connect With Us
+                </h2>
+                <ul class="space-y-2 text-lg">
+                    <li>
+                        <a href="https://www.facebook.com/yourbudgettracker" target="_blank" class="text-blue-600 hover:underline flex items-center">
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/5/51/Facebook_f_logo_%282019%29.svg" alt="Facebook" class="w-6 h-6 mr-2">
+                            Facebook
+                        </a>
+                    </li>
+                    <li>
+                        <a href="https://www.linkedin.com/company/yourbudgettracker" target="_blank" class="text-blue-700 hover:underline flex items-center">
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/LinkedIn_logo_initials.png/480px-LinkedIn_logo_initials.png" alt="LinkedIn" class="w-6 h-6 mr-2">
+                            LinkedIn
+                        </a>
+                    </li>
+                    <li>
+                        <a href="https://github.com/yourbudgettracker" target="_blank" class="text-gray-800 hover:underline flex items-center">
+                            <img src="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png" alt="GitHub" class="w-6 h-6 mr-2">
+                            GitHub
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Add custom keyframes for animation */
+    @keyframes fadeInDown {
+        from {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    .animate-fade-in-down {
+        animation: fadeInDown 1s ease-out forwards;
+    }
+</style>
+{% endblock %}

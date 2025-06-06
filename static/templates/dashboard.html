@@ -1,0 +1,405 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Budget Tracker{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+    <div class="mb-8">
+        <h1 class="text-4xl font-bold text-primary mb-2 dark:text-dark-primary">Home</h1>
+        <p class="text-gray-600 dark:text-a0aec0">Welcome back, {{ session.username }}!</p>
+    </div>
+
+    {# New structure for financial summary boxes #}
+    <div class="mb-8">
+        {# Net Balance (All Time) - now spans the full width of the section #}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div class="bg-white rounded-lg shadow-lg p-6 md:col-span-2 dark:bg-dark-bg-2 dark:shadow-xl">
+                <h3 class="text-lg font-semibold text-gray-700 mb-2 dark:text-dark-text">Net Balance (All Time)</h3>
+                <p class="text-3xl font-bold {% if total_income - total_expense >= 0 %}text-green-600{% else %}text-red-600{% endif %} dark:text-dark-text">
+                    ₱{{ "%.2f"|format(total_income - total_expense) }}
+                </p>
+            </div>
+        </div>
+        {# Total Income and Total Expenses - side-by-side below Net Balance #}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="bg-white rounded-lg shadow-lg p-6 dark:bg-dark-bg-2 dark:shadow-xl">
+                <h3 class="text-lg font-semibold text-gray-700 mb-2 dark:text-dark-text">Total Income (All Time)</h3>
+                <p class="text-3xl font-bold text-green-600 dark:text-green-300">₱{{ "%.2f"|format(total_income) }}</p>
+            </div>
+            <div class="bg-white rounded-lg shadow-lg p-6 dark:bg-dark-bg-2 dark:shadow-xl">
+                <h3 class="text-lg font-semibold text-gray-700 mb-2 dark:text-dark-text">Total Expenses (All Time)</h3>
+                <p class="text-3xl font-bold text-red-600 dark:text-red-300">₱{{ "%.2f"|format(total_expense) }}</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="flex flex-wrap gap-4 justify-center mb-8">
+        <a href="{{ url_for('income') }}"
+           class="bg-green-500 text-white px-8 py-3 rounded-lg shadow-md hover:bg-green-600 transition-colors font-medium text-lg">
+            Add Income
+        </a>
+        <a href="{{ url_for('expense') }}"
+           class="bg-red-500 text-white px-8 py-3 rounded-lg shadow-md hover:bg-red-600 transition-colors font-medium text-lg">
+            Add Expense
+        </a>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div class="bg-white rounded-lg shadow-lg p-6 dark:bg-dark-bg-2 dark:shadow-xl">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 dark:text-dark-text">Overall Financial Overview (By Transaction)</h2> {# Updated title #}
+            <div class="flex items-center mb-4">
+                <label for="pieChartType" class="mr-2 text-gray-700 dark:text-cbd5e0">Type:</label>
+                <select id="pieChartType" class="px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600 dark:text-dark-text">
+                    <option value="all" selected>All</option>
+                    <option value="income">Income</option>
+                    <option value="expense">Expenses</option>
+                </select>
+                <label for="pieChartPeriod" class="ml-4 mr-2 text-gray-700 dark:text-cbd5e0">Period:</label>
+                <select id="pieChartPeriod" class="px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600 dark:text-dark-text">
+                    <option value="all">All Time</option>
+                    <option value="year">This Year</option>
+                    <option value="month" selected>This Month</option>
+                    <option value="week">This Week</option>
+                    <option value="today">Today</option>
+                </select>
+            </div>
+            <div class="chart-container relative" style="height:300px; width:100%;">
+                <canvas id="pieChart"></canvas>
+                <div class="absolute inset-0 flex items-center justify-center hidden" id="pieNoDataMessage">
+                    <p class="text-gray-500 text-center text-lg dark:text-gray-400">No transactions for this period.</p>
+                </div>
+            </div>
+            <div id="pieChartLegend" class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-2 text-sm max-h-48 overflow-y-auto">
+            </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-lg p-6 dark:bg-dark-bg-2 dark:shadow-xl">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 dark:text-dark-text">Breakdown by Transaction</h2> {# Updated title #}
+            <div class="flex items-center mb-4">
+                <label for="barChartType" class="mr-2 text-gray-700 dark:text-cbd5e0">Type:</label>
+                <select id="barChartType" class="px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600 dark:text-dark-text">
+                    <option value="all" selected>All</option>
+                    <option value="expense">Expenses</option>
+                    <option value="income">Income</option>
+                </select>
+                <label for="barChartPeriod" class="ml-4 mr-2 text-gray-700 dark:text-cbd5e0">Period:</label>
+                <select id="barChartPeriod" class="px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600 dark:text-dark-text">
+                    <option value="all">All Time</option>
+                    <option value="year">This Year</option>
+                    <option value="month" selected>This Month</option>
+                    <option value="week">This Week</option>
+                    <option value="today">Today</option>
+                </select>
+            </div>
+            <div class="chart-container relative overflow-x-auto" style="height:300px; width:100%;"> {# Added overflow-x-auto #}
+                <canvas id="barChart"></canvas>
+                <div class="absolute inset-0 flex items-center justify-center hidden" id="barNoDataMessage">
+                    <p class="text-gray-500 text-center text-lg dark:text-gray-400">No transactions for this period.</p>
+                </div>
+            </div>
+            <div id="barChartLegend" class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-2 text-sm max-h-48 overflow-y-auto">
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const pieChartType = document.getElementById('pieChartType');
+    const pieChartPeriod = document.getElementById('pieChartPeriod');
+    const barChartType = document.getElementById('barChartType');
+    const barChartPeriod = document.getElementById('barChartPeriod');
+    const pieChartCtx = document.getElementById('pieChart').getContext('2d');
+    const barChartCtx = document.getElementById('barChart').getContext('2d');
+    let pieChartInstance;
+    let barChartInstance;
+
+    function createOrUpdatePieChart(chartData) {
+        // In individual mode, item.name is already the description/date combination
+        const labels = chartData.map(item => item.name);
+        const values = chartData.map(item => item.value);
+        const colors = chartData.map(item => item.color);
+
+        if (pieChartInstance) {
+            pieChartInstance.data.labels = labels;
+            pieChartInstance.data.datasets[0].data = values;
+            pieChartInstance.data.datasets[0].backgroundColor = colors;
+            pieChartInstance.update();
+        } else {
+            pieChartInstance = new Chart(pieChartCtx, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: colors,
+                        borderColor: '#fff',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false, 
+                    plugins: {
+                        legend: {
+                            display: false 
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed !== null) {
+                                        label += '₱' + context.parsed.toFixed(2);
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        document.getElementById('pieChart').style.display = 'block';
+        document.getElementById('pieNoDataMessage').classList.add('hidden');
+    }
+
+    function createOrUpdateBarChart(chartData) {
+        // In individual mode, item.name is already the description/date combination
+        const labels = chartData.map(item => item.name);
+        const values = chartData.map(item => item.value);
+        // Colors from transaction.category_color
+        const colors = chartData.map(item => item.color); 
+
+        if (barChartInstance) {
+            barChartInstance.data.labels = labels;
+            barChartInstance.data.datasets[0].data = values;
+            barChartInstance.data.datasets[0].backgroundColor = colors;
+            barChartInstance.update();
+        } else {
+            barChartInstance = new Chart(barChartCtx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Amount', // Generic label for individual transactions
+                        data: values,
+                        backgroundColor: colors,
+                        borderColor: colors,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false, 
+                    plugins: {
+                        legend: {
+                            display: false 
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        label += '₱' + context.parsed.y.toFixed(2);
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Amount (₱)',
+                                color: getComputedStyle(document.documentElement).getPropertyValue('--dark-text') && htmlElement.classList.contains('dark') ? '#e2e8f0' : '#4A5568'
+                            },
+                            ticks: {
+                                color: getComputedStyle(document.documentElement).getPropertyValue('--dark-text') && htmlElement.classList.contains('dark') ? '#e2e8f0' : '#718096'
+                            },
+                            grid: {
+                                color: getComputedStyle(document.documentElement).getPropertyValue('--dark-bg-2') && htmlElement.classList.contains('dark') ? '#4A5568' : '#E2E8F0'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Transaction', // Updated title
+                                color: getComputedStyle(document.documentElement).getPropertyValue('--dark-text') && htmlElement.classList.contains('dark') ? '#e2e8f0' : '#4A5568'
+                            },
+                            ticks: {
+                                color: getComputedStyle(document.documentElement).getPropertyValue('--dark-text') && htmlElement.classList.contains('dark') ? '#e2e8f0' : '#718096'
+                            },
+                            grid: {
+                                color: getComputedStyle(document.documentElement).getPropertyValue('--dark-bg-2') && htmlElement.classList.contains('dark') ? '#4A5568' : '#E2E8F0'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        document.getElementById('barChart').style.display = 'block';
+        document.getElementById('barNoDataMessage').classList.add('hidden');
+    }
+
+    function handleChartError(chartId, error) {
+        console.error(`Error loading ${chartId} chart data:`, error);
+        const chartInstance = chartId === 'pie' ? pieChartInstance : barChartInstance;
+        if (chartInstance) {
+            chartInstance.destroy();
+            if (chartId === 'pie') pieChartInstance = null;
+            else barChartInstance = null;
+        }
+        document.getElementById(`${chartId}Chart`).style.display = 'none';
+        document.getElementById(`${chartId}NoDataMessage`).classList.remove('hidden');
+        document.getElementById(`${chartId}NoDataMessage`).textContent = 'Error loading data.';
+        document.getElementById(`${chartId}ChartLegend`).innerHTML = '';
+    }
+
+    // Helper function to process and render pie chart
+    function processAndRenderPieChart(chartData) { // Removed chartType as it's always 'all' or specific to page type for individual mode
+        const noDataMessageDiv = document.getElementById('pieNoDataMessage');
+        if (chartData.length > 0) {
+            createOrUpdatePieChart(chartData);
+            const pieChartLegend = document.getElementById('pieChartLegend');
+            pieChartLegend.innerHTML = '';
+            chartData.forEach(item => {
+                const legendItem = document.createElement('div');
+                legendItem.className = 'flex items-center justify-between p-2 bg-gray-50 rounded dark:bg-gray-700 dark:text-dark-text';
+                
+                // Determine text color for legend based on original_type for 'all' chart (if present)
+                let typeClass = '';
+                if (item.original_type === 'income') { 
+                    typeClass = 'text-green-600 dark:text-green-400';
+                } else if (item.original_type === 'expense') {
+                    typeClass = 'text-red-600 dark:text-red-400';
+                } else { // Fallback, though should be covered by type
+                     typeClass = 'text-gray-700 dark:text-dark-text'; // Neutral if type not clear
+                }
+                legendItem.innerHTML = `
+                    <div class="flex items-center space-x-3">
+                        <div class="w-4 h-4 rounded" style="background-color: ${item.color}"></div>
+                        <span class="text-gray-700 dark:text-dark-text">${item.name}</span>
+                    </div>
+                    <span class="font-semibold ${typeClass}">₱${item.value.toFixed(2)}</span>
+                `;
+                pieChartLegend.appendChild(legendItem);
+            });
+        } else {
+            if (pieChartInstance) {
+                pieChartInstance.destroy();
+                pieChartInstance = null;
+            }
+            document.getElementById('pieChart').style.display = 'none';
+            noDataMessageDiv.classList.remove('hidden');
+            document.getElementById('pieChartLegend').innerHTML = '';
+        }
+    }
+
+    function loadPieChartData(type, period) {
+        // Fetch data for individual transactions on dashboard pie chart
+        fetch(`/get_chart_data/${type}?period=${period}&mode=individual`)
+            .then(response => response.json())
+            .then(data => {
+                processAndRenderPieChart(data); // Pass data directly
+            })
+            .catch(error => handleChartError('pie', error));
+    }
+
+    // Helper function to process and render bar chart
+    function processAndRenderBarChart(chartData) { // Removed chartType
+        const noDataMessageDiv = document.getElementById('barNoDataMessage');
+        if (chartData.length > 0) {
+            createOrUpdateBarChart(chartData);
+            const barChartLegend = document.getElementById('barChartLegend');
+            barChartLegend.innerHTML = '';
+            chartData.forEach(item => {
+                const legendItem = document.createElement('div');
+                legendItem.className = 'flex items-center justify-between p-2 bg-gray-50 rounded dark:bg-gray-700 dark:text-dark-text';
+                
+                // Determine text color for legend based on original_type (if present)
+                let colorClass = '';
+                if (item.original_type === 'income') { 
+                    colorClass = 'text-green-600 dark:text-green-400';
+                } else if (item.original_type === 'expense') {
+                    colorClass = 'text-red-600 dark:text-red-400';
+                } else { 
+                    colorClass = 'text-gray-700 dark:text-dark-text'; // Neutral if type not clear
+                }
+                legendItem.innerHTML = `
+                    <div class="flex items-center space-x-3">
+                        <div class="w-4 h-4 rounded" style="background-color: ${item.color}"></div>
+                        <span class="text-gray-700 dark:text-dark-text">${item.name}</span>
+                    </div>
+                    <span class="font-semibold ${colorClass}">₱${item.value.toFixed(2)}</span>
+                `;
+                barChartLegend.appendChild(legendItem);
+            });
+        } else {
+            if (barChartInstance) {
+                barChartInstance.destroy();
+                barChartInstance = null;
+            }
+            document.getElementById('barChart').style.display = 'none';
+            noDataMessageDiv.classList.remove('hidden');
+            noDataMessageDiv.textContent = `No transactions for this period.`;
+            document.getElementById('barChartLegend').innerHTML = '';
+        }
+    }
+
+    function loadBarChartData(type, period) {
+        // Fetch data for individual transactions on dashboard bar chart
+        fetch(`/get_chart_data/${type}?period=${period}&mode=individual`)
+            .then(response => response.json())
+            .then(data => {
+                processAndRenderBarChart(data); // Pass data directly
+            })
+            .catch(error => handleChartError('bar', error));
+    }
+
+    // Initial load for charts
+    loadPieChartData(pieChartType.value, pieChartPeriod.value);
+    loadBarChartData(barChartType.value, barChartPeriod.value);
+
+    // Event listeners for filters
+    pieChartType.addEventListener('change', function() {
+        loadPieChartData(this.value, pieChartPeriod.value);
+    });
+
+    pieChartPeriod.addEventListener('change', function() {
+        loadPieChartData(pieChartType.value, this.value);
+    });
+
+    barChartType.addEventListener('change', function() {
+        loadBarChartData(this.value, barChartPeriod.value);
+    });
+
+    barChartPeriod.addEventListener('change', function() {
+        loadBarChartData(barChartType.value, this.value);
+    });
+
+    // Handle dark mode for chart axis/grid lines
+    const htmlElement = document.documentElement; // Get the root HTML element
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            if (mutation.attributeName === 'class') {
+                // Re-render charts when theme changes
+                if (pieChartInstance) pieChartInstance.destroy(); pieChartInstance = null; // Destroy to force recreation with new colors
+                if (barChartInstance) barChartInstance.destroy(); barChartInstance = null;
+                loadPieChartData(pieChartType.value, pieChartPeriod.value);
+                loadBarChartData(barChartType.value, barChartPeriod.value);
+            }
+        });
+    });
+    observer.observe(htmlElement, { attributes: true });
+
+});
+</script>
+{% endblock %}

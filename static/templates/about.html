@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block title %}About Us - Budget Tracker{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto bg-white rounded-xl shadow-2xl p-8 md:p-12 transform hover:scale-105 transition-transform duration-300 ease-in-out">
+    <div class="text-center mb-10">
+        <h1 class="text-5xl font-extrabold text-primary mb-4 animate-fade-in-down">About Budget Tracker</h1>
+        <p class="text-lg text-gray-700 max-w-2xl mx-auto">
+            Your trusted partner in mastering personal finance.
+        </p>
+    </div>
+
+    <div class="bg-blue-50 rounded-lg p-6 mb-10 shadow-md border border-blue-100">
+        <h2 class="text-3xl font-bold text-blue-800 mb-4 flex items-center">
+            <svg class="w-8 h-8 mr-3 text-blue-600" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l3 3a1 1 0 001.414-1.414L11 9.586V6z" clip-rule="evenodd"></path></svg>
+            Our Mission
+        </h2>
+        <p class="text-gray-700 text-lg leading-relaxed">
+            Welcome to Budget Tracker, your personal finance companion designed to help you take control of your money.
+            Our mission is to provide a simple, intuitive, and powerful tool that empowers individuals to understand
+            their spending habits, track income, and achieve their financial goals with confidence and ease.
+        </p>
+    </div>
+
+    <div class="bg-green-50 rounded-lg p-6 mb-10 shadow-md border border-green-100">
+        <h2 class="text-3xl font-bold text-green-800 mb-4 flex items-center">
+            <svg class="w-8 h-8 mr-3 text-green-600" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 12a2 2 0 100-4 2 2 0 000 4z"></path><path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd"></path></svg>
+            Our Vision
+        </h2>
+        <p class="text-gray-700 text-lg leading-relaxed">
+            We believe that managing personal finances shouldn't be complicated. By offering clear insights and
+            easy-to-use features, we aim to make budgeting accessible to everyone, regardless of their financial background.
+            Our goal is to foster financial literacy and help users build a secure and prosperous financial future.
+        </p>
+    </div>
+
+    <div class="bg-purple-50 rounded-lg p-6 mb-10 shadow-md border border-purple-100">
+        <h2 class="text-3xl font-bold text-purple-800 mb-6 text-center">
+            <svg class="w-9 h-9 mx-auto mb-3 text-purple-600" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 002.238 2.238.79-.79 0 01-.79 0zM10 17.25a.75.75 0 00-.75.75.75.75 0 001.5 0 .75.75 0 00-.75-.75zM12.75 4.75a.75.75 0 00-.75.75c0 .096.027.185.074.265a.75.75 0 00-.75.75v5.5a.75.75 0 001.5 0v-5.5a.75.75 0 00-.75-.75z" clip-rule="evenodd"></path><path fill-rule="evenodd" d="M12.75 4.75a.75.75 0 00-.75.75v5.5a.75.75 0 001.5 0v-5.5a.75.75 0 00-.75-.75zM9.25 4.75a.75.75 0 00-.75.75v5.5a.75.75 0 001.5 0v-5.5a.75.75 0 00-.75-.75zM15.25 8.75a.75.75 0 00-.75.75v2.5a.75.75 0 001.5 0v-2.5a.75.75 0 00-.75-.75zM4.75 8.75a.75.75 0 00-.75.75v2.5a.75.75 0 001.5 0v-2.5a.75.75 0 00-.75-.75zM17.25 12.75a.75.75 0 00-.75.75v.5a.75.75 0 001.5 0v-.5a.75.75 0 00-.75-.75zM2.75 12.75a.75.75 0 00-.75.75v.5a.75.75 0 001.5 0v-.5a.75.75 0 00-.75-.75zM10 13a1 1 0 100 2 1 1 0 000-2z" clip-rule="evenodd"></path></svg>
+            Key Features
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 text-gray-700">
+            <div class="flex items-start p-4 bg-white rounded-lg shadow-sm border border-gray-100 transition-shadow hover:shadow-md">
+                <svg class="w-6 h-6 mt-1 mr-3 text-primary" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+                <p><strong>Intuitive Dashboard:</strong> Get a quick and comprehensive financial overview at a glance.</p>
+            </div>
+            <div class="flex items-start p-4 bg-white rounded-lg shadow-sm border border-gray-100 transition-shadow hover:shadow-md">
+                <svg class="w-6 h-6 mt-1 mr-3 text-primary" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 11a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zm3-8a1 1 0 10-2 0v1a1 1 0 102 0V5zM3 13a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM7 5a1 1 0 011 1v1a1 1 0 11-2 0V6a1 1 0 011-1zm4 4a1 1 0 00-1 1v1a1 1 0 102 0v-1a1 1 0 00-1-1zm5-1a1 1 0 00-1 1v1a1 1 0 102 0v-1a1 1 0 00-1-1zM4 9a1 1 0 00-1 1v1a1 1 0 102 0v-1a1 1 0 00-1-1zM10 7a1 1 0 011 1v1a1 1 0 11-2 0V8a1 1 0 011-1zM10 3a1 1 0 011 1v1a1 1 0 11-2 0V4a1 1 0 011-1z" clip-rule="evenodd"></path></svg>
+                <p><strong>Easy Tracking:</strong> Effortlessly track income and expenses with customizable categories.</p>
+            </div>
+            <div class="flex items-start p-4 bg-white rounded-lg shadow-sm border border-gray-100 transition-shadow hover:shadow-md">
+                <svg class="w-6 h-6 mt-1 mr-3 text-primary" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 110 2H6a2 2 0 01-2-2V4zm2-2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V4a2 2 0 00-2-2H6zm0 4h8v1H6V6zm0 2h8v1H6V8zm0 2h8v1H6v-1z" clip-rule="evenodd"></path></svg>
+                <p><strong>Detailed History:</strong> Access a comprehensive transaction history for thorough financial review.</p>
+            </div>
+            <div class="flex items-start p-4 bg-white rounded-lg shadow-sm border border-gray-100 transition-shadow hover:shadow-md">
+                <svg class="w-6 h-6 mt-1 mr-3 text-primary" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M2 10a8 8 0 1116 0 8 8 0 01-16 0zm8-6a.75.75 0 00-1.5 0v4.25a.75.75 0 00.22.53l3 3a.75.75 0 101.06-1.06L10.75 9.19V4z" clip-rule="evenodd"></path></svg>
+                <p><strong>Visual Reports:</strong> Understand your spending patterns clearly with insightful visual reports.</p>
+            </div>
+            <div class="flex items-start p-4 bg-white rounded-lg shadow-sm border border-gray-100 transition-shadow hover:shadow-md">
+                <svg class="w-6 h-6 mt-1 mr-3 text-primary" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 1a4 4 0 00-4 4v2H3a2 2 0 00-2 2v6a2 2 0 002 2h14a2 2 0 002-2v-6a2 2 0 00-2-2h-3V5a4 4 0 00-4-4zm-4 4a2 2 0 012-2h4a2 2 0 012 2v2H6V5zm6 10H8v-2h4v2z" clip-rule="evenodd"></path></svg>
+                <p><strong>Secure Account Management:</strong> Rest assured with robust security for your financial data.</p>
+            </div>
+            <div class="flex items-start p-4 bg-white rounded-lg shadow-sm border border-gray-100 transition-shadow hover:shadow-md">
+                <svg class="w-6 h-6 mt-1 mr-3 text-primary" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm-1-8a1 1 0 102 0V7a1 1 0 10-2 0v3zm1-3a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"></path></svg>
+                <p><strong>24/7 Support:</strong> Our dedicated team is always ready to assist you with any questions.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="text-center mt-10">
+        <p class="text-gray-700 text-lg mb-6">
+            Thank you for choosing Budget Tracker. We are continuously working to improve our service and add new features
+            to better serve your financial needs and help you achieve your financial freedom.
+        </p>
+        <a href="{{ url_for('dashboard') }}" class="inline-block bg-primary text-white text-xl font-semibold px-8 py-4 rounded-full shadow-lg hover:bg-opacity-90 transition-all duration-300 transform hover:scale-105">
+            Start Your Financial Journey Today!
+        </a>
+    </div>
+</div>
+
+<style>
+    /* Add custom keyframes for animation */
+    @keyframes fadeInDown {
+        from {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    .animate-fade-in-down {
+        animation: fadeInDown 1s ease-out forwards;
+    }
+</style>
+{% endblock %}
