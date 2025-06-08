@@ -1,0 +1,23 @@
+[build]
+  command = "pip install -r requirements.txt" # Command to install dependencies
+  publish = "build"                           # This is a placeholder, Flask serves dynamically
+
+[functions]
+  # Netlify Functions (optional, for serverless functions, not directly for your Flask app)
+  # You don't need this section unless you plan to add serverless functions.
+  # directory = "functions"
+
+# This section configures the Python build environment
+[build.environment]
+  # Use Python 3.10 (or your preferred compatible version)
+  # Ensure this matches the Python version you've been developing with if possible.
+  PYTHON_VERSION = "3.10" 
+
+# This is the crucial part for Flask:
+# Netlify will use a WSGI server (like Gunicorn) to run your Flask app.
+# The `wsgi_app` path is relative to your project root.
+# Assuming your Flask app instance is named `app` in `app.py`.
+[[redirects]]
+  from = "/*"
+  to = "/app.py" # Point to your Flask application file
+  status = 200
