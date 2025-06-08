@@ -12,10 +12,15 @@
   PYTHON_VERSION = "3.10" # Ensure this matches your local Python version
 
 # --- Functions Configuration (Crucial for Flask) ---
-# This tells Netlify where to find your serverless functions,
-# which includes the wrapper for your Flask app.
+# This tells Netlify where to find your serverless functions.
 [functions]
   directory = "functions" # Points to the folder containing server.py
+
+  # NEW ADDITION: Tell Netlify exactly which file/function is your main function.
+  # This makes it explicit that 'server.py' contains the 'handler' function.
+  node_bundler = "esbuild" # Required for Python functions
+  # Ensure your function's handler is named 'handler' in server.py
+  # and the file is named 'server.py' in the 'functions' directory.
 
 # --- Redirects (Crucial for Flask) ---
 # This rule tells Netlify to send all incoming requests to your serverless function
