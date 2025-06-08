@@ -11,29 +11,16 @@
 [build.environment]
   PYTHON_VERSION = "3.10" # Ensure this matches your local Python version
 
-# --- Functions Configuration (Crucial for Flask) ---
+# --- Functions Configuration ---
 # This tells Netlify where to find your serverless functions.
-# We are making the Python runtime explicit here.
+# Netlify will automatically detect Python functions by convention.
 [functions]
-  directory = "functions" # Points to the folder containing server.py
-  # This tells Netlify to use the Python runtime for functions in this directory.
-  # This might be redundant if auto-detection works, but makes it explicit.
-  # The 'main' value here implies Netlify should look for 'main.py' or follow
-  # other conventions. However, our redirect points to '/.netlify/functions/server'.
-  # The `node_bundler = "esbuild"` is more for JavaScript functions, so we can remove it for Python.
-  # Instead, let's explicitly specify the Python runtime for functions.
-  # Netlify usually autodetects, but sometimes being explicit helps.
-  
-  # Set the runtime to Python for this functions directory
-  # Note: The 'external_node_modules' or 'node_bundler' might not be needed
-  # when directly specifying the Python runtime.
-  # Netlify's Python functions documentation points to creating a `main.py`
-  # or `server.py` directly inside the functions directory.
+  directory = "functions" # This is the folder where your server.py and __init__.py are.
+  # No 'node_bundler' or explicit 'runtime' needed here, as Netlify auto-detects Python.
 
-# --- Redirects (Crucial for Flask) ---
-# This rule tells Netlify to send all incoming requests to your serverless function
-# that runs your Flask application.
+# --- Redirects ---
+# This rule tells Netlify to send all incoming requests to your serverless function.
 [[redirects]]
   from = "/*"
-  to = "/.netlify/functions/server" # Path to your server.py function (handler is implicit)
+  to = "/.netlify/functions/server" # Points to the generated function named 'server'
   status = 200 # Indicate a successful proxy
