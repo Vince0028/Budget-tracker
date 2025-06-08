@@ -13,19 +13,27 @@
 
 # --- Functions Configuration (Crucial for Flask) ---
 # This tells Netlify where to find your serverless functions.
+# We are making the Python runtime explicit here.
 [functions]
   directory = "functions" # Points to the folder containing server.py
-
-  # NEW ADDITION: Tell Netlify exactly which file/function is your main function.
-  # This makes it explicit that 'server.py' contains the 'handler' function.
-  node_bundler = "esbuild" # Required for Python functions
-  # Ensure your function's handler is named 'handler' in server.py
-  # and the file is named 'server.py' in the 'functions' directory.
+  # This tells Netlify to use the Python runtime for functions in this directory.
+  # This might be redundant if auto-detection works, but makes it explicit.
+  # The 'main' value here implies Netlify should look for 'main.py' or follow
+  # other conventions. However, our redirect points to '/.netlify/functions/server'.
+  # The `node_bundler = "esbuild"` is more for JavaScript functions, so we can remove it for Python.
+  # Instead, let's explicitly specify the Python runtime for functions.
+  # Netlify usually autodetects, but sometimes being explicit helps.
+  
+  # Set the runtime to Python for this functions directory
+  # Note: The 'external_node_modules' or 'node_bundler' might not be needed
+  # when directly specifying the Python runtime.
+  # Netlify's Python functions documentation points to creating a `main.py`
+  # or `server.py` directly inside the functions directory.
 
 # --- Redirects (Crucial for Flask) ---
 # This rule tells Netlify to send all incoming requests to your serverless function
 # that runs your Flask application.
 [[redirects]]
   from = "/*"
-  to = "/.netlify/functions/server" # Path to your server.py function
+  to = "/.netlify/functions/server" # Path to your server.py function (handler is implicit)
   status = 200 # Indicate a successful proxy
