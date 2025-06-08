@@ -1,6 +1,6 @@
 [build]
   command = "pip install -r requirements.txt" # Command to install dependencies
-  publish = "build"                           # This is a placeholder, Flask serves dynamically
+  publish = "."                           # This is a placeholder, Flask serves dynamically
 
 [functions]
   # Netlify Functions (optional, for serverless functions, not directly for your Flask app)
