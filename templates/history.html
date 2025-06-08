@@ -1,0 +1,413 @@
+{% extends 'base.html' %}
+
+{% block title %}History - Budget Tracker{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+    <h1 class="text-4xl font-bold text-primary mb-8 dark:text-dark-primary">Transaction History</h1>
+
+    <div class="bg-white rounded-lg shadow-lg p-6 mb-8 dark:bg-dark-bg-2 dark:shadow-xl">
+        <div class="flex flex-wrap gap-4 items-center">
+            <label class="text-lg font-semibold text-gray-700 dark:text-dark-text">View:</label>
+            <select id="periodSelect" class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600 dark:text-dark-text">
+                <option value="today">Today</option>
+                <option value="week">This Week</option>
+                <option value="month" selected>This Month</option>
+                <option value="year">This Year</option>
+                <option value="all">All Time</option>
+            </select>
+            <select id="typeSelect" class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600 dark:text-dark-text">
+                <option value="both">Income & Expenses</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div class="bg-white rounded-lg shadow-lg p-6 dark:bg-dark-bg-2 dark:shadow-xl">
+            <h3 class="text-lg font-semibold text-gray-700 mb-2 dark:text-dark-text">Total Income</h3>
+            <p id="totalIncome" class="text-3xl font-bold text-green-600 dark:text-green-300">₱0.00</p>
+        </div>
+        <div class="bg-white rounded-lg shadow-lg p-6 dark:bg-dark-bg-2 dark:shadow-xl">
+            <h3 class="text-lg font-semibold text-gray-700 mb-2 dark:text-dark-text">Total Expenses</h3>
+            <p id="totalExpenses" class="text-3xl font-bold text-red-600 dark:text-red-300">₱0.00</p>
+        </div>
+        <div class="bg-white rounded-lg shadow-lg p-6 dark:bg-dark-bg-2 dark:shadow-xl">
+            <h3 class="text-lg font-semibold text-gray-700 mb-2 dark:text-dark-text">Net Balance</h3>
+            <p id="netBalance" class="text-3xl font-bold text-gray-800 dark:text-dark-text">₱0.00</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div class="bg-white rounded-lg shadow-lg p-6 dark:bg-dark-bg-2 dark:shadow-xl">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 dark:text-dark-text">Income Breakdown (By Category)</h2> {# Updated title #}
+            <div class="relative h-64 chart-container"> {# Added height and chart-container class #}
+                <canvas id="incomeChart"></canvas>
+                <div class="absolute inset-0 flex items-center justify-center hidden" id="incomeNoDataMessage"> {# Added for no data message #}
+                    <p class="text-gray-500 text-center dark:text-gray-400">No income data for this period</p>
+                </div>
+            </div>
+            <div id="incomeChartLegend" class="mt-4 space-y-2"></div>
+        </div>
+        <div class="bg-white rounded-lg shadow-lg p-6 dark:bg-dark-bg-2 dark:shadow-xl">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 dark:text-dark-text">Expense Breakdown (By Category)</h2> {# Updated title #}
+            <div class="relative h-64 chart-container"> {# Added height and chart-container class #}
+                <canvas id="expenseChart"></canvas>
+                <div class="absolute inset-0 flex items-center justify-center hidden" id="expenseNoDataMessage"> {# Added for no data message #}
+                    <p class="text-gray-500 text-center dark:text-gray-400">No expense data for this period</p>
+                </div>
+            </div>
+            <div id="expenseChartLegend" class="mt-4 space-y-2"></div>
+        </div>
+    </div>
+
+    {% if transactions %}
+    <div class="table-responsive bg-white rounded-lg shadow-lg p-6 overflow-x-auto dark:bg-dark-bg-2 dark:shadow-xl">
+        <h2 class="text-2xl font-bold text-gray-800 mb-4 dark:text-dark-text">All Transactions</h2>
+        <table class="table table-striped table-hover w-full text-left dark:text-dark-text">
+            <thead>
+                <tr>
+                    <th class="py-2 px-4 border-b dark:border-gray-600 dark:text-gray-300">Date & Time</th> {# Changed header #}
+                    <th class="py-2 px-4 border-b dark:border-gray-600 dark:text-gray-300">Category</th>
+                    <th class="py-2 px-4 border-b dark:border-gray-600 dark:text-gray-300">Description</th>
+                    <th class="py-2 px-4 border-b dark:border-gray-600 dark:text-gray-300">Amount</th>
+                    <th class="py-2 px-4 border-b dark:border-gray-600 dark:text-gray-300">Type</th>
+                    <th class="py-2 px-4 border-b dark:border-gray-600 dark:text-gray-300">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                {% for transaction in transactions %}
+                <tr class="{{ 'bg-green-50 dark:bg-green-800' if transaction.type == 'income' else 'bg-red-50 dark:bg-red-800' }} border-b dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700">
+                    {# MODIFIED LINE: Format transaction.date to include time #}
+                    <td class="py-2 px-4 text-sm text-gray-900 dark:text-dark-text">{{ transaction.date | datetimeformat }}</td>
+                    <td class="py-2 px-4 text-sm text-gray-900 dark:text-dark-text">
+                        <span class="badge px-2 py-1 rounded" style="background-color: {{ transaction.category_color if transaction.category_color else '#6c757d' }}; color: white;">{{ transaction.category_name }}</span>
+                    </td>
+                    <td class="py-2 px-4 text-sm text-gray-900 dark:text-dark-text">{{ transaction.description if transaction.description else '-' }}</td>
+                    <td class="py-2 px-4 font-semibold {% if transaction.type == 'income' %}text-green-600 dark:text-green-400{% else %}text-red-600 dark:text-red-400{% endif %}">₱{{ "%.2f"|format(transaction.amount|float) }}</td>
+                    <td class="py-2 px-4 capitalize text-sm text-gray-900 dark:text-dark-text">{{ transaction.type }}</td>
+                    <td class="py-2 px-4 text-sm">
+                        <button type="button" 
+                                onclick="openEditTransactionModal(
+                                    {{ transaction.id }}, 
+                                    '{{ '%.2f'|format(transaction.amount) }}', 
+                                    '{{ transaction.description|e }}', 
+                                    {# MODIFIED LINE: Safely convert to YYYY-MM-DD string #}
+                                    '{{ transaction.date.strftime('%Y-%m-%d') if transaction.date and (transaction.date is not string) else (transaction.date.split(' ')[0] if transaction.date else '') }}',
+                                    '{{ transaction.type }}', 
+                                    '{{ transaction.category_id if transaction.category_id is not none else '' }}'
+                                )" 
+                                class="text-blue-600 hover:text-blue-800 mr-2 dark:text-blue-400 dark:hover:text-blue-200">Edit</button>
+                        <form action="{{ url_for('delete_transaction', transaction_id=transaction.id) }}" method="post" class="inline-block">
+                            <button type="submit" class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-200" onclick="return confirm('Are you sure you want to delete this transaction?');">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="text-gray-500 text-center py-8 dark:text-gray-400">No transactions found for the selected period.</p>
+    {% endif %}
+</div>
+
+{# Edit Transaction Modal #}
+<div id="editTransactionModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center hidden z-50">
+    <div class="bg-white rounded-lg shadow-xl p-8 w-full max-w-md mx-auto dark:bg-dark-bg-1 dark:shadow-2xl">
+        <h2 class="text-2xl font-bold text-gray-800 mb-6 dark:text-dark-text">Edit Transaction</h2>
+        <form id="editTransactionForm" method="POST" action="" class="space-y-4">
+            <input type="hidden" name="transaction_id" id="modal_transaction_id">
+            <input type="hidden" name="type" id="modal_transaction_type"> {# To filter categories dynamically #}
+
+            <div>
+                <label for="modal_amount" class="block text-sm font-medium text-gray-700 mb-1 dark:text-cbd5e0">Amount</label>
+                <input type="number" id="modal_amount" name="amount" step="0.01" required
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-dark-text">
+            </div>
+
+            <div>
+                <label for="modal_category_id" class="block text-sm font-medium text-gray-700 mb-1 dark:text-cbd5e0">Category</label>
+                <select id="modal_category_id" name="category_id" required
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-dark-text">
+                    {# Options will be populated by JavaScript #}
+                </select>
+            </div>
+
+            <div>
+                <label for="modal_date" class="block text-sm font-medium text-gray-700 mb-1 dark:text-cbd5e0">Date</label>
+                <input type="date" id="modal_date" name="date" required
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-dark-text">
+            </div>
+
+            <div>
+                <label for="modal_description" class="block text-sm font-medium text-gray-700 mb-1 dark:text-cbd5e0">Description</label>
+                <textarea id="modal_description" name="description" rows="3"
+                          class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-dark-text"></textarea>
+            </div>
+
+            <div class="flex justify-end space-x-3 mt-6">
+                <button type="button" onclick="closeEditTransactionModal()"
+                        class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 font-medium dark:bg-gray-600 dark:text-dark-text dark:hover:bg-gray-500">
+                    Cancel
+                </button>
+                <button type="submit"
+                        class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-opacity-90 font-medium">
+                    Save Changes
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    // Period and Type Selectors logic
+    const periodSelect = document.getElementById('periodSelect');
+    const typeSelect = document.getElementById('typeSelect');
+
+    let incomeChartInstance = null;
+    let expenseChartInstance = null;
+    let allCategories = []; // To store all categories for dynamic dropdown population
+
+    function processAndRenderChart(data, chartId, legendId, chartType) {
+        const canvas = document.getElementById(chartId);
+        const ctx = canvas.getContext('2d');
+        const noDataMessageDiv = document.getElementById(`${chartId.replace('Chart', '')}NoDataMessage`);
+
+        // Destroy existing chart instances before creating new ones
+        if (chartType === 'income' && incomeChartInstance) {
+            incomeChartInstance.destroy();
+            incomeChartInstance = null;
+        } else if (chartType === 'expense' && expenseChartInstance) {
+            expenseChartInstance.destroy();
+            expenseChartInstance = null;
+        }
+
+        if (data.chartData && data.chartData.labels.length > 0) {
+            canvas.style.display = 'block';
+            noDataMessageDiv.classList.add('hidden');
+
+            const newChartInstance = new Chart(ctx, {
+                type: 'pie',
+                data: data.chartData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false, 
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed !== null) {
+                                        label += '₱' + context.parsed.toFixed(2);
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            if (chartType === 'income') {
+                incomeChartInstance = newChartInstance;
+            } else if (chartType === 'expense') {
+                expenseChartInstance = newChartInstance;
+            }
+
+            // Create custom legend
+            const legend = document.getElementById(legendId);
+            legend.innerHTML = '';
+            data.legendData.forEach(item => {
+                const legendItem = document.createElement('div');
+                legendItem.className = 'flex items-center justify-between p-2 bg-gray-50 rounded dark:bg-gray-700 dark:text-dark-text';
+                const colorClass = chartType === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400';
+                legendItem.innerHTML = `
+                    <div class="flex items-center space-x-3">
+                        <div class="w-4 h-4 rounded" style="background-color: ${item.color}"></div>
+                        <span class="text-gray-700 dark:text-dark-text">${item.name}</span> {# Display transaction description here #}
+                    </div>
+                    <span class="font-semibold ${colorClass}">₱${item.value.toFixed(2)}</span>
+                `;
+                legend.appendChild(legendItem);
+            });
+        } else {
+            canvas.style.display = 'none';
+            noDataMessageDiv.classList.remove('hidden');
+            document.getElementById(legendId).innerHTML = '';
+        }
+    }
+
+    // Function to load chart data from the server
+    function loadChartData(chartType, period) {
+        // Request category-aggregated data for History page charts (same as Dashboard pie)
+        fetch(`/get_transactions_data?period=${period}&dataType=${chartType}&mode=category`)
+            .then(response => response.json())
+            .then(data => {
+                if (chartType === 'income') {
+                    processAndRenderChart(data, 'incomeChart', 'incomeChartLegend', 'income');
+                } else {
+                    processAndRenderChart(data, 'expenseChart', 'expenseChartLegend', 'expense');
+                }
+            })
+            .catch(error => {
+                console.error(`Error loading ${chartType} chart data:`, error);
+                const canvas = document.getElementById(`${chartType}Chart`);
+                const noDataMessageDiv = document.getElementById(`${chartType}NoDataMessage`);
+                const legend = document.getElementById(`${chartType}ChartLegend`);
+                if (canvas) canvas.style.display = 'none';
+                if (noDataMessageDiv) {
+                    noDataMessageDiv.classList.remove('hidden');
+                    noDataMessageDiv.textContent = 'Error loading data.';
+                }
+                if (legend) legend.innerHTML = '';
+            });
+    }
+
+    function loadSummary(period, type) {
+        let incomePromise = Promise.resolve([]);
+        let expensePromise = Promise.resolve([]);
+
+        // For summary totals, we still want category aggregation (original behavior)
+        // because summing individual transactions gives the same total.
+        // However, if the filter type is 'income' or 'expense' only,
+        // we should only fetch that specific type for the summary.
+        // If type is 'both', we fetch income and expense separately.
+        if (type === 'income' || type === 'both') {
+            incomePromise = fetch(`/get_transactions_data?period=${period}&dataType=income&mode=category`).then(r => r.json());
+        }
+        if (type === 'expense' || type === 'both') {
+            expensePromise = fetch(`/get_transactions_data?period=${period}&dataType=expense&mode=category`).then(r => r.json());
+        }
+
+        Promise.all([incomePromise, expensePromise])
+        .then(([incomeResponse, expenseResponse]) => {
+            const incomeData = incomeResponse.legendData || [];
+            const expenseData = expenseResponse.legendData || [];
+
+            const filteredIncomeData = (type === 'income' || type === 'both') ? incomeData : [];
+            const filteredExpenseData = (type === 'expense' || type === 'both') ? expenseData : [];
+
+            const totalIncome = filteredIncomeData.reduce((sum, item) => sum + item.value, 0);
+            const totalExpenses = filteredExpenseData.reduce((sum, item) => sum + item.value, 0);
+            const netBalance = totalIncome - totalExpenses;
+            
+            document.getElementById('totalIncome').textContent = `₱${totalIncome.toFixed(2)}`;
+            document.getElementById('totalExpenses').textContent = `₱${totalExpenses.toFixed(2)}`;
+            document.getElementById('netBalance').textContent = `₱${netBalance.toFixed(2)}`;
+            document.getElementById('netBalance').className = `text-3xl font-bold ${netBalance >= 0 ? 'text-green-600 dark:text-green-300' : 'text-red-600 dark:text-red-300'}`;
+        })
+        .catch(error => {
+            console.error('Error loading summary data:', error);
+            document.getElementById('totalIncome').textContent = `₱0.00`;
+            document.getElementById('totalExpenses').textContent = `₱0.00`;
+            document.getElementById('netBalance').textContent = `₱0.00`;
+            document.getElementById('netBalance').className = `text-3xl font-bold text-gray-800 dark:text-dark-text`;
+        });
+    }
+
+    // --- Edit Transaction Modal Functions ---
+
+    // Fetch categories on page load (or dynamically when opening modal if preferred)
+    document.addEventListener('DOMContentLoaded', function() {
+        // Populate category dropdown from Flask backend using /get_categories
+        fetch('/get_categories')
+            .then(response => response.json())
+            .then(data => {
+                allCategories = data;
+                console.log("Categories loaded:", allCategories);
+            })
+            .catch(error => console.error('Error loading categories:', error));
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlPeriod = urlParams.get('period') || 'month'; // Default to 'month'
+        const urlType = urlParams.get('type') || 'both';     // Default to 'both'
+
+        // Set selectors to URL values if they exist
+        periodSelect.value = urlPeriod;
+        typeSelect.value = urlType;
+
+        // Load charts and summary based on initial values (or URL params)
+        loadChartData('income', urlPeriod);
+        loadChartData('expense', urlPeriod);
+        loadSummary(urlPeriod, urlType); // This will update the summary boxes
+        
+        // No auto-reload on initial load for table as Flask does this.
+        // Event listeners for changes in period or type
+        periodSelect.addEventListener('change', function() {
+            const selectedPeriod = this.value;
+            const selectedType = typeSelect.value;
+            // Update URL and reload to ensure table also filters
+            window.location.href = `{{ url_for('history') }}?period=${selectedPeriod}&type=${selectedType}`;
+        });
+
+        typeSelect.addEventListener('change', function() {
+            const selectedType = this.value;
+            const currentPeriod = periodSelect.value;
+            // Update URL and reload to ensure table also filters
+            window.location.href = `{{ url_for('history') }}?period=${currentPeriod}&type=${selectedType}`;
+        });
+    });
+
+
+    function openEditTransactionModal(transactionId, amount, description, date, type, categoryId) {
+        const modal = document.getElementById('editTransactionModal');
+        const form = document.getElementById('editTransactionForm');
+        const amountInput = document.getElementById('modal_amount');
+        const categorySelect = document.getElementById('modal_category_id');
+        const dateInput = document.getElementById('modal_date');
+        const descriptionTextarea = document.getElementById('modal_description');
+        const transactionIdInput = document.getElementById('modal_transaction_id');
+        const transactionTypeInput = document.getElementById('modal_transaction_type');
+
+
+        // Populate form fields
+        amountInput.value = amount;
+        dateInput.value = date; // Date format should match 'YYYY-MM-DD' for input type="date"
+        descriptionTextarea.value = description;
+        transactionIdInput.value = transactionId;
+        transactionTypeInput.value = type; // Set the transaction type
+
+        // Set form action dynamically
+        form.action = `/edit_transaction/${transactionId}`;
+
+        // Populate category dropdown based on transaction type
+        categorySelect.innerHTML = '<option value="">Select a category</option>'; // Clear existing options
+        const filteredCategories = allCategories.filter(cat => cat.type === type);
+
+        filteredCategories.forEach(category => {
+            const option = document.createElement('option');
+            option.value = category.id;
+            option.textContent = category.name;
+            if (parseInt(categoryId) === category.id) {
+                option.selected = true;
+            }
+            categorySelect.appendChild(option);
+        });
+
+        // If the transaction is uncategorized, ensure the "Select a category" option is selected
+        if (!categoryId) {
+            categorySelect.value = "";
+        }
+
+
+        modal.classList.remove('hidden'); // Show the modal
+    }
+
+    function closeEditTransactionModal() {
+        document.getElementById('editTransactionModal').classList.add('hidden'); // Hide the modal
+    }
+
+    // Close modal when clicking outside of it
+    document.getElementById('editTransactionModal').addEventListener('click', function(e) {
+        if (e.target === this) { // Check if the click was directly on the modal background
+            closeEditTransactionModal();
+        }
+    });
+</script>
+{% endblock %}

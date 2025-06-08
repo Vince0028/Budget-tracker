@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+
+{% block title %}Add Expense - Budget Tracker{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+    <div class="flex justify-between items-center mb-8">
+        <h1 class="text-4xl font-bold text-primary dark:text-dark-primary">Add Expense</h1> {# Added dark mode class #}
+        <a href="{{ url_for('income') }}" 
+           class="bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-600 transition-colors font-medium">
+            Switch to Income
+        </a>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div class="bg-white rounded-lg shadow-lg p-6 dark:bg-dark-bg-2 dark:shadow-xl"> {# Added dark mode classes #}
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 dark:text-dark-text">Record Expense</h2> {# Added dark mode class #}
+            
+            <form method="POST" action="{{ url_for('add_transaction') }}" class="space-y-6" onsubmit="return validateForm()">
+                <input type="hidden" name="type" value="expense">
+                
+                <div>
+                    <label for="category_id" class="block text-sm font-medium text-gray-700 mb-2 dark:text-cbd5e0">Category *</label> {# Added dark mode class #}
+                    <select id="category_id" name="category_id" required
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-dark-text"> {# Added dark mode classes #}
+                        <option value="">Select a category</option>
+                        {# Loop through expense categories provided by Flask #}
+                        {% for category in categories %}
+                            <option value="{{ category.id }}">{{ category.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div>
+                    <label for="amount" class="block text-sm font-medium text-gray-700 mb-2 dark:text-cbd5e0">Amount *</label> {# Added dark mode class #}
+                    <input type="number" step="0.01" min="0" id="amount" name="amount" required
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-dark-text"> {# Added dark mode classes #}
+                </div>
+                
+                <div>
+                    <label for="date" class="block text-sm font-medium text-gray-700 mb-2 dark:text-cbd5e0">Date *</label> {# Added dark mode class #}
+                    <input type="date" id="date" name="date" required
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-dark-text"> {# Added dark mode classes #}
+                </div>
+                
+                <div>
+                    <label for="description" class="block text-sm font-medium text-gray-700 mb-2 dark:text-cbd5e0">Description (Optional)</label>
+                    <textarea id="description" name="description" rows="3"
+                              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-dark-text"></textarea>
+                </div>
+                
+                <button type="submit"
+                        class="w-full bg-primary text-white py-3 px-6 rounded-lg hover:bg-opacity-90 transition-colors font-medium">
+                    Add Expense
+                </button>
+            </form>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-lg p-6 dark:bg-dark-bg-2 dark:shadow-xl"> {# Added dark mode classes #}
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 dark:text-dark-text">Expense Breakdown (By Category)</h2> {# Updated title #}
+            
+            <div class="flex flex-wrap gap-4 mb-6">
+                <label for="expensePeriodSelect" class="block text-sm font-medium text-gray-700 mb-2 dark:text-cbd5e0">View Period:</label>
+                <select id="expensePeriodSelect"
+                        class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600 dark:text-dark-text"> {# Added dark mode classes #}
+                    <option value="month" selected>This Month</option>
+                    <option value="week">This Week</option>
+                    <option value="today">Today</option>
+                    <option value="year">This Year</option>
+                    <option value="all">All Time</option>
+                </select>
+            </div>
+            
+            <div class="relative h-64 chart-container"> {# Added chart-container class #}
+                <canvas id="expenseChart"></canvas>
+                <div class="absolute inset-0 flex items-center justify-center hidden" id="expenseNoDataMessage"> {# Added for no data message #}
+                    <p class="text-gray-500 text-center dark:text-gray-400">No expense data for this period</p> {# Added dark mode class #}
+                </div>
+            </div>
+            <div id="expenseChartLegend" class="mt-4 space-y-3">
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Set today's date as default for the date input
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0'); // Months start at 0!
+        const dd = String(today.getDate()).padStart(2, '0');
+        document.getElementById('date').value = `${yyyy}-${mm}-${dd}`;
+
+        // Get the period selector for the expense chart
+        const expensePeriodSelect = document.getElementById('expensePeriodSelect');
+
+        // Initial load for expense chart (default: month) - now individual transactions
+        loadChart('expense', expensePeriodSelect.value, 'expenseChart', 'expenseChartLegend');
+
+        // Event listener for period change
+        expensePeriodSelect.addEventListener('change', function() {
+            loadChart('expense', this.value, 'expenseChart', 'expenseChartLegend');
+        });
+    });
+
+    function validateForm() {
+        const category_id = document.getElementById('category_id').value;
+        const amount = document.getElementById('amount').value;
+        const date = document.getElementById('date').value;
+
+        if (!category_id) {
+            alert('Please select a category.');
+            return false;
+        }
+        if (!amount || parseFloat(amount) <= 0) {
+            alert('Please enter a valid amount greater than zero.');
+            return false;
+        }
+        if (!date) {
+            alert('Please select a date.');
+            return false;
+        }
+        return true;
+    }
+
+    let expensePieChart; // Declare chart instance globally for this script
+
+    function loadChart(chartType, period, canvasId, legendId) {
+        // Updated fetch URL to match app.py endpoint: /get_transactions_data
+        // For income/expense page charts, we want breakdown by category, so mode=category
+        fetch(`/get_transactions_data?period=${period}&dataType=${chartType}&mode=category`)
+            .then(response => response.json())
+            .then(data => {
+                const canvas = document.getElementById(canvasId);
+                const ctx = canvas.getContext('2d');
+                const noDataMessageDiv = document.getElementById(`${canvasId.replace('Chart', '')}NoDataMessage`);
+
+                if (expensePieChart) { // Destroy existing chart if it exists
+                    expensePieChart.destroy();
+                }
+
+                if (data.chartData && data.chartData.labels.length > 0) {
+                    canvas.style.display = 'block'; // Show canvas if data exists
+                    noDataMessageDiv.classList.add('hidden'); // Hide no data message
+
+                    expensePieChart = new Chart(ctx, {
+                        type: 'pie',
+                        data: data.chartData,
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false, 
+                            plugins: {
+                                legend: {
+                                    display: false
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function(context) {
+                                            let label = context.label || '';
+                                            if (label) {
+                                                label += ': ';
+                                            }
+                                            if (context.parsed !== null) {
+                                                label += '₱' + context.parsed.toFixed(2);
+                                            }
+                                            return label;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+
+                    // Create custom legend
+                    const legend = document.getElementById(legendId);
+                    legend.innerHTML = ''; // Clear existing legend items
+                    data.legendData.forEach(item => { // Loop through legendData from API
+                        const legendItem = document.createElement('div');
+                        legendItem.className = 'flex items-center justify-between p-2 bg-gray-50 rounded dark:bg-gray-700 dark:text-dark-text';
+                        const colorClass = chartType === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400';
+
+                        legendItem.innerHTML = `
+                            <div class="flex items-center space-x-3">
+                                <div class="w-4 h-4 rounded" style="background-color: ${item.color}"></div>
+                                <span class="text-gray-700 dark:text-dark-text">${item.name}</span> {# Display category name here #}
+                            </div>
+                            <span class="font-semibold ${colorClass}">₱${item.value.toFixed(2)}</span>
+                        `;
+                        legend.appendChild(legendItem);
+                    });
+
+                } else {
+                    canvas.style.display = 'none'; // Hide canvas if no data
+                    noDataMessageDiv.classList.remove('hidden'); // Show no data message
+                    document.getElementById(legendId).innerHTML = ''; // Clear legend
+                }
+            })
+            .catch(error => {
+                console.error('Error loading chart data:', error);
+                const canvas = document.getElementById(canvasId);
+                const noDataMessageDiv = document.getElementById(`${canvasId.replace('Chart', '')}NoDataMessage`);
+                canvas.style.display = 'none';
+                noDataMessageDiv.classList.remove('hidden');
+                noDataMessageDiv.textContent = 'Error loading chart data.';
+                document.getElementById(legendId).innerHTML = '';
+            });
+    }
+</script>
+{% endblock %}

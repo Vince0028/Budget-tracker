@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en" class="light"> {# Added 'light' class as default, which will be toggled to 'dark' #}
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Budget Tracker{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class', {# Enables dark mode based on the presence of the 'dark' class on the HTML element #}
+            theme: {
+                extend: {
+                    colors: {
+                        'primary': '#fc5723',
+                        'bg-light': '#dfdfdf',
+                        'bg-medium': '#aaaaaa',
+                        // Custom colors for dark mode to provide more contrast and depth
+                        'dark-bg-1': '#1a202c', // Main dark background
+                        'dark-bg-2': '#2d3748', // Card/section background
+                        'dark-text': '#e2e8f0', // Light text on dark backgrounds
+                        'dark-primary': '#ff8a5d', // Brighter primary for dark mode
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Base styles for light mode */
+        .gradient-bg {
+            background: linear-gradient(135deg, #dfdfdf 0%, #ffffff 100%);
+        }
+
+        /* Dark mode specific styles - applied when 'dark' class is on the html tag */
+        html.dark .gradient-bg {
+            background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%); /* Darker gradient */
+        }
+        html.dark body {
+            color: #e2e8f0; /* Default text color in dark mode */
+        }
+        html.dark .bg-white {
+            background-color: #2d3748; /* Darker background for elements previously white */
+        }
+        html.dark .text-gray-700 {
+            color: #cbd5e0; /* Slightly darker text for contrast */
+        }
+        html.dark .text-gray-800 {
+            color: #e2e8f0; /* Main text color in dark mode */
+        }
+        html.dark .text-gray-600 {
+            color: #a0aec0; /* Lighter gray text */
+        }
+        html.dark .border-gray-300 {
+            border-color: #4a5568; /* Darker border color */
+        }
+        html.dark .shadow-lg {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* Darker shadow */
+        }
+        html.dark .shadow-md {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
+        }
+        html.dark .text-primary {
+            color: #ff8a5d; /* Dark mode primary color */
+        }
+        html.dark .bg-primary {
+            background-color: #ff8a5d; /* Dark mode primary color for buttons/elements */
+        }
+        /* Adjust specific elements like input backgrounds, and gray elements */
+        html.dark input, html.dark select, html.dark textarea { /* Added textarea */
+            background-color: #4a5568;
+            color: #e2e8f0;
+            border-color: #636b6f;
+        }
+        html.dark .bg-gray-50 { /* Used in legends, input wrappers */
+            background-color: #4a5568;
+        }
+        html.dark .bg-gray-200 { /* General light gray backgrounds */
+            background-color: #4a5568;
+        }
+        html.dark .bg-green-50, html.dark .border-green-200 { /* For stats cards */
+            background-color: #1b5e20;
+            border-color: #388e3c;
+        }
+        html.dark .bg-red-50, html.dark .border-red-200 { /* For stats cards */
+            background-color: #b71c1c;
+            border-color: #d32f2f;
+        }
+        html.dark .bg-blue-50, html.dark .border-blue-100 { /* For stats cards / about sections */
+            background-color: #1a237e;
+            border-color: #283593;
+        }
+        html.dark .bg-purple-50, html.dark .border-purple-100 { /* For about sections */
+            background-color: #4a148c;
+            border-color: #6a1b9a;
+        }
+        html.dark .bg-gray-300 { /* Cancel button */
+            background-color: #636b6f;
+            color: #e2e8f0;
+        }
+        html.dark .hover\:bg-gray-100:hover { /* Navbar hover */
+            background-color: #4a5568;
+        }
+        html.dark .text-gray-500 { /* No data messages */
+            color: #a0aec0;
+        }
+        html.dark .table-responsive table { /* For history table */
+            color: #e2e8f0;
+        }
+        html.dark .table-responsive thead th { /* For history table headers */
+            color: #cbd5e0;
+        }
+        html.dark .table-responsive tbody tr.bg-green-50 { /* Income rows in history */
+            background-color: #1b5e20;
+        }
+        html.dark .table-responsive tbody tr.bg-red-50 { /* Expense rows in history */
+            background-color: #b71c1c;
+        }
+        html.dark .table-responsive tbody tr:hover { /* Table row hover */
+            background-color: #4a5568;
+        }
+
+
+        /* Chart.js specific overrides for dark mode */
+        html.dark canvas {
+            background-color: #2d3748; /* Chart background */
+            border-radius: 0.5rem; /* Match card styling */
+        }
+        html.dark .chart-container {
+             /* Optional: if you want chart container to blend more */
+             background-color: #2d3748;
+             border-radius: 0.5rem;
+        }
+        /* Styles for the dark mode toggle switch */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border-width: 0;
+        }
+        .dot {
+            transition: transform 0.3s ease-in-out;
+        }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen text-gray-800">
+    {% if session.user_id %}
+    <nav class="bg-white shadow-lg dark:bg-dark-bg-2 dark:shadow-xl"> {# Added dark mode classes #}
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex justify-between items-center py-4">
+                <div class="flex items-center space-x-4">
+                    {# Main logo #}
+                    <img src="{{ url_for('static', filename='logobd.png') }}" alt="Budget Tracker Logo" class="h-10">
+                    <span class="text-2xl font-bold text-gray-800 dark:text-dark-text">Budget Tracker</span> {# Added dark text #}
+                </div>
+                <div class="hidden md:flex items-center space-x-1">
+                    <a href="{{ url_for('dashboard') }}" class="py-2 px-3 text-gray-700 hover:bg-gray-100 rounded-md font-medium dark:text-dark-text dark:hover:bg-gray-700 flex items-center">
+                        <img src="{{ url_for('static', filename='homebd.png') }}" alt="Home Icon" class="w-5 h-5 mr-2">
+                        Home
+                    </a>
+                    <a href="{{ url_for('about') }}" class="py-2 px-3 text-gray-700 hover:bg-gray-100 rounded-md font-medium dark:text-dark-text dark:hover:bg-gray-700 flex items-center">
+                        <img src="{{ url_for('static', filename='aboutus.png') }}" alt="About Us Icon" class="w-8 h-8 mr-2">
+                        About Us
+                    </a>
+                    <a href="{{ url_for('contact') }}" class="py-2 px-3 text-gray-700 hover:bg-gray-100 rounded-md font-medium dark:text-dark-text dark:hover:bg-gray-700 flex items-center">
+                        <img src="{{ url_for('static', filename='contactbd.png') }}" alt="Contact Us Icon" class="w-7 h-7 mr-2">
+                        Contact Us
+                    </a>
+                    <a href="{{ url_for('account') }}" class="py-2 px-3 text-gray-700 hover:bg-gray-100 rounded-md font-medium dark:text-dark-text dark:hover:bg-gray-700 flex items-center">
+                        <img src="{{ url_for('static', filename='accbd.png') }}" alt="Account Icon" class="w-5 h-5 mr-2">
+                        Account
+                    </a>
+                </div>
+                <div class="md:hidden flex items-center">
+                    <button class="mobile-menu-button" onclick="toggleMobileMenu()">
+                        <svg class="w-6 h-6 text-gray-700 dark:text-dark-text" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="mobile-menu hidden md:hidden bg-white dark:bg-gray-800 py-2" id="mobile-menu"> {# Added dark mode classes #}
+            <a href="{{ url_for('dashboard') }}" class="block px-4 py-2 text-gray-700 hover:bg-gray-100 flex items-center dark:text-dark-text dark:hover:bg-gray-700">
+                <img src="{{ url_for('static', filename='homebd.png') }}" alt="Dashboard Icon" class="w-5 h-5 mr-2">
+                Home
+            </a>
+            <a href="{{ url_for('about') }}" class="block px-4 py-2 text-gray-700 hover:bg-gray-100 flex items-center dark:text-dark-text dark:hover:bg-gray-700">
+                <img src="{{ url_for('static', filename='aboutus.png') }}" alt="About Icon" class="w-8 h-8 mr-2">
+                About Us
+            </a>
+            <a href="{{ url_for('contact') }}" class="block px-4 py-2 text-gray-700 hover:bg-gray-100 flex items-center dark:text-dark-text dark:hover:bg-gray-700">
+                <img src="{{ url_for('static', filename='contactbd.png') }}" alt="Contacts Icon" class="w-7 h-7 mr-2">
+                Contacts
+            </a>
+            <a href="{{ url_for('account') }}" class="block px-4 py-2 text-gray-700 hover:bg-gray-100 flex items-center dark:text-dark-text dark:hover:bg-gray-700">
+                <img src="{{ url_for('static', filename='accbd.png') }}" alt="Account Icon" class="w-5 h-5 mr-2">
+                Account
+            </a>
+        </div>
+    </nav>
+    {% endif %}
+
+    <main class="container mx-auto px-4 py-8">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="mb-4 p-4 rounded-lg {% if category == 'error' %}bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-200{% else %}bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200{% endif %}"> {# Added dark mode classes #}
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <script>
+        // Mobile menu toggle
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobile-menu');
+            menu.classList.toggle('hidden');
+        }
+
+        // Dark mode logic (global functions)
+        const htmlElement = document.documentElement; // Get the root HTML element
+
+        function enableDarkMode() {
+            htmlElement.classList.add('dark');
+            htmlElement.classList.remove('light');
+            localStorage.setItem('theme', 'dark');
+        }
+
+        function disableDarkMode() {
+            htmlElement.classList.add('light');
+            htmlElement.classList.remove('dark');
+            localStorage.setItem('theme', 'light');
+        }
+
+        // Check for saved theme preference on initial load
+        // This script runs before the DOMContentLoaded to prevent FOUC (Flash of Unstyled Content)
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'dark') {
+            enableDarkMode();
+        } else {
+            // Default to light mode if no preference or preference is 'light'
+            disableDarkMode();
+        }
+    </script>
+</body>
+</html>
