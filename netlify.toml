@@ -1,23 +1,29 @@
+# This file configures how Netlify builds and deploys your Flask application.
+
 [build]
-  command = "pip install -r requirements.txt" # Command to install dependencies
-  publish = "."                           # This is a placeholder, Flask serves dynamically
+  # The command Netlify runs to install your Python dependencies.
+  # This assumes your requirements.txt is in the root of your repository.
+  command = "pip install -r requirements.txt"
 
-[functions]
-  # Netlify Functions (optional, for serverless functions, not directly for your Flask app)
-  # You don't need this section unless you plan to add serverless functions.
-  # directory = "functions"
+  # The directory Netlify should publish. For Flask apps, we typically
+  # publish from the root directory, as Flask serves content dynamically.
+  # This fixes the "deploy directory 'build' does not exist" error.
+  publish = "."
 
-# This section configures the Python build environment
+# Specifies the Python version for the build environment.
+# Choose a version compatible with your local development setup and your dependencies.
+# Example: "3.9", "3.10", "3.11"
 [build.environment]
-  # Use Python 3.10 (or your preferred compatible version)
-  # Ensure this matches the Python version you've been developing with if possible.
-  PYTHON_VERSION = "3.10" 
+  PYTHON_VERSION = "3.10"
 
-# This is the crucial part for Flask:
-# Netlify will use a WSGI server (like Gunicorn) to run your Flask app.
-# The `wsgi_app` path is relative to your project root.
-# Assuming your Flask app instance is named `app` in `app.py`.
-[[redirects]]
-  from = "/*"
-  to = "/app.py" # Point to your Flask application file
-  status = 200
+# --- IMPORTANT: Redirects for Flask ---
+# This section tells Netlify to send all web requests to your Flask application.
+# Netlify will automatically detect Gunicorn (from requirements.txt) and run
+# your Flask app instance (usually named 'app' in 'app.py').
+# We are *removing* the explicit `to = "/app.py"` redirect that caused
+# Netlify to serve the app.py code as a static file.
+# By setting `from = "/*"` and `to = "/index.html"` (or any fallback if you have a landing page),
+# Netlify will run your Flask app and let it handle all routing.
+# However, for Flask, the simplest way is to *remove* explicit redirects
+# and let Netlify's build system auto-detect and run Gunicorn/Flask.
+# Therefore, NO [[redirects]] block is needed here for a typical Flask setup.
