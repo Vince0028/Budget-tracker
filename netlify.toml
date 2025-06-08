@@ -7,23 +7,25 @@
 
   # The directory Netlify should publish. For Flask apps, we typically
   # publish from the root directory, as Flask serves content dynamically.
-  # This fixes the "deploy directory 'build' does not exist" error.
   publish = "."
 
 # Specifies the Python version for the build environment.
-# Choose a version compatible with your local development setup and your dependencies.
-# Example: "3.9", "3.10", "3.11"
 [build.environment]
-  PYTHON_VERSION = "3.10"
+  PYTHON_VERSION = "3.10" # Keep this matching your Python version.
 
-# --- IMPORTANT: Redirects for Flask ---
-# This section tells Netlify to send all web requests to your Flask application.
-# Netlify will automatically detect Gunicorn (from requirements.txt) and run
-# your Flask app instance (usually named 'app' in 'app.py').
-# We are *removing* the explicit `to = "/app.py"` redirect that caused
-# Netlify to serve the app.py code as a static file.
-# By setting `from = "/*"` and `to = "/index.html"` (or any fallback if you have a landing page),
-# Netlify will run your Flask app and let it handle all routing.
-# However, for Flask, the simplest way is to *remove* explicit redirects
-# and let Netlify's build system auto-detect and run Gunicorn/Flask.
-# Therefore, NO [[redirects]] block is needed here for a typical Flask setup.
+# --- Crucial for Running Flask on Netlify ---
+# This section tells Netlify's serverless functions environment (which is used
+# to run Python apps like Flask) how to handle incoming HTTP requests.
+# This essentially acts as a proxy that routes all requests to your Flask app.
+# The 'external_node_modules' is often required for Python functions to work.
+[functions]
+  directory = "functions" # This directory can be empty or contain other serverless functions.
+                          # Netlify will create it if it doesn't exist.
+
+# --- Redirects to ensure all traffic goes through your Flask app ---
+# This is the most common and robust way to deploy Flask on Netlify.
+# It uses Netlify's rewrite rules to proxy all requests to your Flask app.
+[[redirects]]
+  from = "/*"
+  to = "/.netlify/functions/server" # This points to the Netlify Function that runs your Flask app
+  status = 200
