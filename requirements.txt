@@ -1,0 +1,5 @@
+Flask==2.3.2  # Or your specific Flask version
+Flask-SQLAlchemy==3.0.3 # Or your specific Flask-SQLAlchemy version
+psycopg2-binary==2.9.6 # Or your specific psycopg2-binary version
+python-dotenv==1.0.0 # Or your specific python-dotenv version
+gunicorn==20.1.0 # This is crucial for Netlify to run your Flask app as a web server
