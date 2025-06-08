@@ -2,30 +2,25 @@
 
 [build]
   # The command Netlify runs to install your Python dependencies.
-  # This assumes your requirements.txt is in the root of your repository.
   command = "pip install -r requirements.txt"
 
-  # The directory Netlify should publish. For Flask apps, we typically
-  # publish from the root directory, as Flask serves content dynamically.
+  # The directory Netlify should publish. For Flask apps, we point to the root.
   publish = "."
 
 # Specifies the Python version for the build environment.
 [build.environment]
-  PYTHON_VERSION = "3.10" # Keep this matching your Python version.
+  PYTHON_VERSION = "3.10" # Ensure this matches your local Python version
 
-# --- Crucial for Running Flask on Netlify ---
-# This section tells Netlify's serverless functions environment (which is used
-# to run Python apps like Flask) how to handle incoming HTTP requests.
-# This essentially acts as a proxy that routes all requests to your Flask app.
-# The 'external_node_modules' is often required for Python functions to work.
+# --- Functions Configuration (Crucial for Flask) ---
+# This tells Netlify where to find your serverless functions,
+# which includes the wrapper for your Flask app.
 [functions]
-  directory = "functions" # This directory can be empty or contain other serverless functions.
-                          # Netlify will create it if it doesn't exist.
+  directory = "functions" # Points to the folder containing server.py
 
-# --- Redirects to ensure all traffic goes through your Flask app ---
-# This is the most common and robust way to deploy Flask on Netlify.
-# It uses Netlify's rewrite rules to proxy all requests to your Flask app.
+# --- Redirects (Crucial for Flask) ---
+# This rule tells Netlify to send all incoming requests to your serverless function
+# that runs your Flask application.
 [[redirects]]
   from = "/*"
-  to = "/.netlify/functions/server" # This points to the Netlify Function that runs your Flask app
-  status = 200
+  to = "/.netlify/functions/server" # Path to your server.py function
+  status = 200 # Indicate a successful proxy
