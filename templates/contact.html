@@ -3,98 +3,140 @@
 {% block title %}Contact Us - Budget Tracker{% endblock %}
 
 {% block content %}
-<div class="max-w-7xl mx-auto bg-white rounded-xl shadow-2xl p-8 md:p-12 transform hover:scale-105 transition-transform duration-300 ease-in-out">
+<div class="max-w-7xl mx-auto bg-white rounded-xl shadow-2xl p-8 md:p-12 transform hover:scale-105 transition-transform duration-300 ease-in-out dark:bg-dark-bg-2 dark:shadow-xl">
     <div class="text-center mb-10">
-        <h1 class="text-5xl font-extrabold text-primary mb-4 animate-fade-in-down">Reach Out to Us!</h1>
-        <p class="text-lg text-gray-700 max-w-2xl mx-auto">
+        <h1 class="text-5xl font-extrabold text-primary mb-4 animate-fade-in-down dark:text-dark-primary">Reach Out to Us!</h1>
+        <p class="text-lg text-gray-700 max-w-2xl mx-auto dark:text-cbd5e0">
             We'd love to hear from you! Your feedback helps us grow and improve Budget Tracker.
             Feel free to send us a message or connect through our channels.
         </p>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-10 items-start">
-        <div class="flex flex-col items-center p-6 bg-gray-50 rounded-lg shadow-inner border border-gray-200">
-            <h2 class="text-3xl font-bold text-gray-800 mb-6">Meet Our Team</h2>
+        <div class="flex flex-col items-center p-6 bg-gray-50 rounded-lg shadow-inner border border-gray-200 dark:bg-gray-700 dark:border-gray-600">
+            <h2 class="text-3xl font-bold text-gray-800 mb-6 dark:text-dark-text">Meet Our Team</h2>
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-                <div class="flex flex-col items-center text-center">
-                    <img src="{{ url_for('static', filename='vinc.png') }}" alt="Team Member 1" 
-                         class="w-32 h-32 rounded-full object-cover border-4 border-primary shadow-lg mb-3 transform hover:rotate-3 transition-transform duration-300">
-                    <h3 class="text-xl font-bold text-gray-800">Vince Nelmar Alobin</h3>
-                    <p class="text-md text-gray-600">Lead Developer</p>
+                {# Developer 1: Vince Nelmar Alobin #}
+                <div class="flex flex-col items-center text-center cursor-pointer transform hover:scale-105 transition-transform duration-200"
+                     onclick="openDeveloperModal('Vince Nelmar Alobin', 'For general inquiries about his work on core app development.', 'For technical support specific to backend functionalities.', 'vincenelmar', 'vincenelmaralobin')">
+                    <img src="{{ url_for('static', filename='vinc.png') }}" alt="Vince Nelmar Alobin" 
+                         class="w-24 h-24 rounded-full object-cover mb-2 shadow-md border-4 border-primary dark:border-dark-primary">
+                    <p class="font-semibold text-lg text-gray-800 dark:text-dark-text">Vince Nelmar Alobin</p>
+                    <p class="text-primary text-sm dark:text-dark-primary">Lead Developer</p>
                 </div>
-                <div class="flex flex-col items-center text-center">
-                    <img src="https://via.placeholder.com/150/0000FF/FFFFFF?text=Team+2" alt="Team Member 2" 
-                         class="w-32 h-32 rounded-full object-cover border-4 border-primary shadow-lg mb-3 transform hover:rotate-3 transition-transform duration-300">
-                    <h3 class="text-xl font-bold text-gray-800">Jane Doe</h3>
-                    <p class="text-md text-gray-600">Product Manager</p>
+                {# Developer 2: Marwin Gonzales #}
+                <div class="flex flex-col items-center text-center cursor-pointer transform hover:scale-105 transition-transform duration-200"
+                     onclick="openDeveloperModal('Marwin Gonzales', 'Questions regarding project timelines and scope.', 'For escalations or project management concerns.', 'marwingonzales', 'marwingonzales')">
+                    <img src="{{ url_for('static', filename='marwin.jpg') }}" alt="Marwin Gonzales" 
+                         class="w-24 h-24 rounded-full object-cover mb-2 shadow-md border-4 border-primary dark:border-dark-primary">
+                    <p class="font-semibold text-lg text-gray-800 dark:text-dark-text">Marwin Gonzales</p>
+                    <p class="text-primary text-sm dark:text-dark-primary">Project Manager</p>
                 </div>
-                <div class="flex flex-col items-center text-center">
-                    <img src="https://via.placeholder.com/150/FF0000/FFFFFF?text=Team+3" alt="Team Member 3" 
-                         class="w-32 h-32 rounded-full object-cover border-4 border-primary shadow-lg mb-3 transform hover:rotate-3 transition-transform duration-300">
-                    <h3 class="text-xl font-bold text-gray-800">John Smith</h3>
-                    <p class="text-md text-gray-600">UX Designer</p>
+                {# Developer 3: Vinz Szymone Mendoza #}
+                <div class="flex flex-col items-center text-center cursor-pointer transform hover:scale-105 transition-transform duration-200"
+                     onclick="openDeveloperModal('Vinz Szymone Mendoza', 'Feedback on user interface elements and design.', 'For frontend display issues or UI bugs.', 'vinzszymone', 'vinzszymonemendoza')">
+                    <img src="{{ url_for('static', filename='szymone.jpg') }}" alt="Vinz Szymone Mendoza" 
+                         class="w-24 h-24 rounded-full object-cover mb-2 shadow-md border-4 border-primary dark:border-dark-primary">
+                    <p class="font-semibold text-lg text-gray-800 dark:text-dark-text">Vinz Szymone Mendoza</p>
+                    <p class="text-primary text-sm dark:text-dark-primary">Frontend Developer</p>
                 </div>
-                <div class="flex flex-col items-center text-center">
-                    <img src="https://via.placeholder.com/150/008000/FFFFFF?text=Team+4" alt="Team Member 4" 
-                         class="w-32 h-32 rounded-full object-cover border-4 border-primary shadow-lg mb-3 transform hover:rotate-3 transition-transform duration-300">
-                    <h3 class="text-xl font-bold text-gray-800">Emily White</h3>
-                    <p class="text-md text-gray-600">Marketing Specialist</p>
+                {# Developer 4: Neichaela Padilla #}
+                <div class="flex flex-col items-center text-center cursor-pointer transform hover:scale-105 transition-transform duration-200"
+                     onclick="openDeveloperModal('Neichaela Padilla', 'Inquiries about user experience flows and design principles.', 'For accessibility concerns or design feedback.', 'neichaelap', 'neichaelapadilla')">
+                    <img src="{{ url_for('static', filename='nika.jpg') }}" alt="Neichaela Padilla" 
+                         class="w-24 h-24 rounded-full object-cover mb-2 shadow-md border-4 border-primary dark:border-dark-primary">
+                    <p class="font-semibold text-lg text-gray-800 dark:text-dark-text">Neichaela Padilla</p>
+                    <p class="text-primary text-sm dark:text-dark-primary">UI/UX Designer</p>
                 </div>
-                <div class="flex flex-col items-center text-center">
-                    <img src="https://via.placeholder.com/150/FFFF00/000000?text=Team+5" alt="Team Member 5" 
-                         class="w-32 h-32 rounded-full object-cover border-4 border-primary shadow-lg mb-3 transform hover:rotate-3 transition-transform duration-300">
-                    <h3 class="text-xl font-bold text-gray-800">David Brown</h3>
-                    <p class="text-md text-gray-600">Community Manager</p>
+                {# Developer 5: Anthony Duenas #}
+                <div class="flex flex-col items-center text-center cursor-pointer transform hover:scale-105 transition-transform duration-200"
+                     onclick="openDeveloperModal('Anthony Duenas', 'Questions about testing procedures and quality assurance.', 'For bug reporting and validation of fixes.', 'anthonyduenas', 'anthonyduenas')">
+                    <img src="{{ url_for('static', filename='anthony.jpg') }}" alt="Anthony Duenas" 
+                         class="w-24 h-24 rounded-full object-cover mb-2 shadow-md border-4 border-primary dark:border-dark-primary">
+                    <p class="font-semibold text-lg text-gray-800 dark:text-dark-text">Anthony Duenas</p>
+                    <p class="text-primary text-sm dark:text-dark-primary">Tester</p>
                 </div>
             </div>
         </div>
 
-        <div class="space-y-8 p-6 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-lg shadow-xl">
+        {# Contact Form and Social Media #}
+        <div class="flex flex-col gap-10">
+            {# General Inquiry Form #}
+            <div class="p-6 bg-gray-50 rounded-lg shadow-inner border border-gray-200 dark:bg-gray-700 dark:border-gray-600">
+                <h2 class="text-3xl font-bold text-gray-800 mb-6 dark:text-dark-text">Send Us a Message</h2>
+                <form action="#" method="POST" class="space-y-4">
+                    <div>
+                        <label for="name" class="block text-sm font-medium text-gray-700 mb-1 dark:text-cbd5e0">Your Name</label>
+                        <input type="text" id="name" name="name" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary dark:bg-gray-800 dark:border-gray-600 dark:text-dark-text" placeholder="John Doe">
+                    </div>
+                    <div>
+                        <label for="email" class="block text-sm font-medium text-gray-700 mb-1 dark:text-cbd5e0">Your Email</label>
+                        <input type="email" id="email" name="email" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary dark:bg-gray-800 dark:border-gray-600 dark:text-dark-text" placeholder="john.doe@example.com">
+                    </div>
+                    <div>
+                        <label for="subject" class="block text-sm font-medium text-gray-700 mb-1 dark:text-cbd5e0">Subject</label>
+                        <input type="text" id="subject" name="subject" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary dark:bg-gray-800 dark:border-gray-600 dark:text-dark-text" placeholder="Inquiry about...">
+                    </div>
+                    <div>
+                        <label for="message" class="block text-sm font-medium text-gray-700 mb-1 dark:text-cbd5e0">Your Message</label>
+                        <textarea id="message" name="message" rows="5" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary dark:bg-gray-800 dark:border-gray-600 dark:text-dark-text" placeholder="Write your message here..."></textarea>
+                    </div>
+                    <button type="submit" class="w-full bg-primary text-white py-3 rounded-lg font-semibold hover:bg-opacity-90 transition-colors shadow-md">
+                        Send Message
+                    </button>
+                </form>
+            </div>
+
+            {# Social Media Links #}
+            <div class="p-6 bg-gray-50 rounded-lg shadow-inner border border-gray-200 dark:bg-gray-700 dark:border-gray-600">
+                <h2 class="text-3xl font-bold text-gray-800 mb-6 dark:text-dark-text">Connect With Us</h2>
+                <ul class="space-y-4">
+                    <li>
+                        <a href="https://www.facebook.com/yourbudgettracker" target="_blank" class="text-blue-600 hover:underline flex items-center group">
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/5/51/Facebook_f_logo_%282019%29.svg" alt="Facebook" class="w-6 h-6 mr-3 group-hover:scale-110 transition-transform">
+                            <span class="dark:text-blue-400">Facebook</span> <span class="ml-2 text-gray-600 dark:text-gray-400 text-sm">(Vince Nelmar P. Alobin)</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="https://www.linkedin.com/company/yourbudgettracker" target="_blank" class="text-blue-700 hover:underline flex items-center group">
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/LinkedIn_logo_initials.png/480px-LinkedIn_logo_initials.png" alt="LinkedIn" class="w-6 h-6 mr-3 group-hover:scale-110 transition-transform">
+                            <span class="dark:text-blue-300">LinkedIn</span> <span class="ml-2 text-gray-600 dark:text-gray-400 text-sm">(Vince Nelmar P. Alobin)</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="https://github.com/yourbudgettracker" target="_blank" class="text-gray-800 hover:underline flex items-center group dark:text-dark-text">
+                            <img src="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png" alt="GitHub" class="w-6 h-6 mr-3 group-hover:scale-110 transition-transform">
+                            <span class="dark:text-dark-text">GitHub</span> <span class="ml-2 text-gray-600 dark:text-gray-400 text-sm">(Vince0028)</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# Developer Info Modal #}
+<div id="developerModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
+    <div class="bg-white rounded-lg shadow-xl p-8 w-full max-w-md mx-auto relative dark:bg-dark-bg-2 dark:text-dark-text">
+        <button onclick="closeDeveloperModal()" class="absolute top-4 right-4 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-dark-text">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+        <h2 id="developerName" class="text-3xl font-bold text-primary mb-6 text-center dark:text-dark-primary"></h2>
+
+        <div class="space-y-6">
             <div>
-                <h2 class="text-3xl font-bold text-blue-800 mb-3 flex items-center">
-                    <svg class="w-8 h-8 mr-3 text-blue-600" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"></path><path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"></path></svg>
-                    General Inquiries
-                </h2>
-                <p class="text-gray-700 text-lg">
-                    Email: <a href="mailto:info@budgettracker.com" class="text-primary hover:underline font-semibold transition-colors duration-200">info@budgettracker.com</a>
-                </p>
+                <h3 class="text-xl font-semibold text-gray-800 mb-2 dark:text-dark-text">General Inquiries</h3>
+                <p id="inquiriesContent" class="text-gray-700 dark:text-cbd5e0"></p>
             </div>
             <div>
-                <h2 class="text-3xl font-bold text-green-800 mb-3 flex items-center">
-                    <svg class="w-8 h-8 mr-3 text-green-600" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.336-3.11c-.813-1.076-1.336-2.405-1.336-3.89C2 6.134 5.582 3 10 3s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clip-rule="evenodd"></path></svg>
-                    Support
-                </h2>
-                <p class="text-gray-700 text-lg">
-                    Email: <a href="mailto:support@budgettracker.com" class="text-primary hover:underline font-semibold transition-colors duration-200">support@budgettracker.com</a>
-                </p>
-                <p class="text-gray-700 text-lg mt-1">
-                    Phone: <span class="font-semibold">+1 (555) 123-4567</span>
-                </p>
+                <h3 class="text-xl font-semibold text-gray-800 mb-2 dark:text-dark-text">Support</h3>
+                <p id="supportContent" class="text-gray-700 dark:text-cbd5e0"></p>
             </div>
             <div>
-                <h2 class="text-3xl font-bold text-purple-800 mb-3 flex items-center">
-                    <svg class="w-8 h-8 mr-3 text-purple-600" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 2a4 4 0 00-4 4v2H3a2 2 0 00-2 2v6a2 2 0 002 2h14a2 2 0 002-2v-6a2 2 0 00-2-2h-3V6a4 4 0 00-4-4zm-4 4a2 2 0 012-2h4a2 2 0 012 2v2H6V6zm6 10H8v-2h4v2z" clip-rule="evenodd"></path></svg>
-                    Connect With Us
-                </h2>
-                <ul class="space-y-2 text-lg">
-                    <li>
-                        <a href="https://www.facebook.com/yourbudgettracker" target="_blank" class="text-blue-600 hover:underline flex items-center">
-                            <img src="https://upload.wikimedia.org/wikipedia/commons/5/51/Facebook_f_logo_%282019%29.svg" alt="Facebook" class="w-6 h-6 mr-2">
-                            Facebook
-                        </a>
-                    </li>
-                    <li>
-                        <a href="https://www.linkedin.com/company/yourbudgettracker" target="_blank" class="text-blue-700 hover:underline flex items-center">
-                            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/LinkedIn_logo_initials.png/480px-LinkedIn_logo_initials.png" alt="LinkedIn" class="w-6 h-6 mr-2">
-                            LinkedIn
-                        </a>
-                    </li>
-                    <li>
-                        <a href="https://github.com/yourbudgettracker" target="_blank" class="text-gray-800 hover:underline flex items-center">
-                            <img src="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png" alt="GitHub" class="w-6 h-6 mr-2">
-                            GitHub
-                        </a>
-                    </li>
+                <h3 class="text-xl font-semibold text-gray-800 mb-2 dark:text-dark-text">Connect With <span id="connectDeveloperName"></span></h3>
+                <ul class="space-y-2 text-sm">
+                    <li><a id="githubLink" href="#" target="_blank" class="text-blue-600 hover:underline flex items-center dark:text-blue-400"><img src="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png" alt="GitHub" class="w-5 h-5 mr-2"> GitHub Profile</a></li>
+                    <li><a id="linkedinLink" href="#" target="_blank" class="text-blue-700 hover:underline flex items-center dark:text-blue-300"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/LinkedIn_logo_initials.png/480px-LinkedIn_logo_initials.png" alt="LinkedIn" class="w-5 h-5 mr-2"> LinkedIn Profile</a></li>
                 </ul>
             </div>
         </div>
@@ -117,4 +159,30 @@
         animation: fadeInDown 1s ease-out forwards;
     }
 </style>
+
+<script>
+    function openDeveloperModal(name, inquiries, support, githubUser, linkedinUser) {
+        document.getElementById('developerName').textContent = name;
+        document.getElementById('inquiriesContent').textContent = inquiries;
+        document.getElementById('supportContent').textContent = support;
+        document.getElementById('connectDeveloperName').textContent = name;
+
+        // Construct dynamic links for GitHub and LinkedIn profiles
+        document.getElementById('githubLink').href = `https://github.com/Vince0028${githubUser}`;
+        document.getElementById('linkedinLink').href = `https://www.linkedin.com/in/vince-nelmar-alobin-26a361321/${linkedinUser}`;
+
+        document.getElementById('developerModal').classList.remove('hidden');
+    }
+
+    function closeDeveloperModal() {
+        document.getElementById('developerModal').classList.add('hidden');
+    }
+
+    // Close modal when clicking outside
+    document.getElementById('developerModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeDeveloperModal();
+        }
+    });
+</script>
 {% endblock %}
