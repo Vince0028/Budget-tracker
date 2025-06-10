@@ -37,6 +37,16 @@
         </div>
     </div>
 
+    {# Add Income and Add Expense Buttons #}
+    <div class="flex flex-col sm:flex-row justify-center gap-4 mb-8">
+        <a href="{{ url_for('income') }}" class="w-full sm:w-auto bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-600 transition-colors font-medium text-center shadow-md">
+            Add Income
+        </a>
+        <a href="{{ url_for('expense') }}" class="w-full sm:w-auto bg-red-500 text-white px-6 py-3 rounded-lg hover:bg-red-600 transition-colors font-medium text-center shadow-md">
+            Add Expense
+        </a>
+    </div>
+
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
         {# Pie Chart Section #}
         <div class="bg-white rounded-lg shadow-lg p-6 dark:bg-dark-bg-2 dark:shadow-xl">
