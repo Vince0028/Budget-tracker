@@ -51,15 +51,15 @@
         {# Pie Chart Section #}
         <div class="bg-white rounded-lg shadow-lg p-6 dark:bg-dark-bg-2 dark:shadow-xl">
             <h2 class="text-2xl font-bold text-gray-800 mb-4 dark:text-dark-text">Overall Financial Overview (By Category)</h2>
-            <div class="flex items-center mb-4">
-                <label for="pieChartType" class="mr-2 text-gray-700 dark:text-cbd5e0">Type:</label>
-                <select id="pieChartType" class="px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600 dark:text-dark-text">
+            <div class="flex flex-wrap items-center mb-4 gap-2"> {# Added flex-wrap and gap-2 for better mobile layout #}
+                <label for="pieChartType" class="text-gray-700 dark:text-cbd5e0">Type:</label>
+                <select id="pieChartType" class="flex-grow w-full sm:w-auto px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600 dark:text-dark-text"> {# Added flex-grow and w-full sm:w-auto #}
                     <option value="expense" selected>Expenses</option>
                     <option value="income">Income</option>
                     <option value="both">All (Income & Expense)</option>
                 </select>
-                <label for="pieChartPeriod" class="ml-4 mr-2 text-gray-700 dark:text-cbd5e0">Period:</label>
-                <select id="pieChartPeriod" class="px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600 dark:text-dark-text">
+                <label for="pieChartPeriod" class="text-gray-700 dark:text-cbd5e0">Period:</label> {# Removed ml-4 #}
+                <select id="pieChartPeriod" class="flex-grow w-full sm:w-auto px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600 dark:text-dark-text"> {# Added flex-grow and w-full sm:w-auto #}
                     <option value="month" selected>This Month</option>
                     <option value="today">Today</option>
                     <option value="week">This Week</option>
@@ -80,15 +80,15 @@
         {# Bar Chart Section #}
         <div class="bg-white rounded-lg shadow-lg p-6 dark:bg-dark-bg-2 dark:shadow-xl">
             <h2 class="text-2xl font-bold text-gray-800 mb-4 dark:text-dark-text">Monthly/Daily/Yearly Trend</h2>
-            <div class="flex items-center mb-4">
-                <label for="barChartType" class="mr-2 text-gray-700 dark:text-cbd5e0">Type:</label>
-                <select id="barChartType" class="px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600 dark:text-dark-text">
+            <div class="flex flex-wrap items-center mb-4 gap-2"> {# Added flex-wrap and gap-2 for better mobile layout #}
+                <label for="barChartType" class="text-gray-700 dark:text-cbd5e0">Type:</label>
+                <select id="barChartType" class="flex-grow w-full sm:w-auto px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600 dark:text-dark-text"> {# Added flex-grow and w-full sm:w-auto #}
                     <option value="expense" selected>Expenses</option>
                     <option value="income">Income</option>
                     <option value="both">All (Income & Expense)</option>
                 </select>
-                <label for="barChartPeriod" class="ml-4 mr-2 text-gray-700 dark:text-cbd5e0">Period:</label>
-                <select id="barChartPeriod" class="px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600 dark:text-dark-text">
+                <label for="barChartPeriod" class="text-gray-700 dark:text-cbd5e0">Period:</label> {# Removed ml-4 #}
+                <select id="barChartPeriod" class="flex-grow w-full sm:w-auto px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600 dark:text-dark-text"> {# Added flex-grow and w-full sm:w-auto #}
                     <option value="month" selected>This Month</option>
                     <option value="today">Today</option>
                     <option value="week">This Week</option>
