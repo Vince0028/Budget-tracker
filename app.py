@@ -472,7 +472,7 @@ def contact():
 def get_transactions_data():
     user_id = session['user_id']
     period = request.args.get('period', 'month')
-    data_type = request.args.get('dataType', 'expense') # 'expense' or 'income'
+    data_type = request.args.get('dataType', 'expense') # 'expense' or 'income' or 'both'
 
     end_date = datetime.now()
     if period == 'today':
@@ -487,41 +487,41 @@ def get_transactions_data():
     else: # 'all'
         start_date = datetime.min # Or a very early date, e.g., datetime(2000, 1, 1)
 
-    query = Transaction.query.filter(
+    # Base query filters
+    base_filters = [
         Transaction.user_id == user_id,
-        Transaction.type == data_type,
         Transaction.date >= start_date,
-        Transaction.date <= end_date # Include transactions up to the end of the current day/period
-    )
+        Transaction.date <= end_date
+    ]
+
+    if data_type != 'both': # Add type filter only if not 'both'
+        base_filters.append(Transaction.type == data_type)
 
     # Group by category and sum amounts
-    # If a category is deleted and ON DELETE SET NULL is used for category_id,
-    # the category_id for old transactions might be NULL.
-    # We'll treat NULL as an 'Uncategorized' group for plotting.
     results = db.session.query(
         Category.name,
         Category.color,
         db.func.sum(Transaction.amount).label('total_amount')
     ).outerjoin(Category, Transaction.category_id == Category.id)\
-    .filter(
-        Transaction.user_id == user_id,
-        Transaction.type == data_type,
-        Transaction.date >= start_date,
-        Transaction.date <= end_date
-    )\
+    .filter(*base_filters)\
     .group_by(Category.name, Category.color)\
     .all()
 
     # Handle uncategorized transactions separately
-    uncategorized_sum = db.session.query(
+    # This filter also needs to respect the data_type if not 'both'
+    uncategorized_query = db.session.query(
         db.func.sum(Transaction.amount)
     ).filter(
         Transaction.user_id == user_id,
-        Transaction.type == data_type,
         Transaction.date >= start_date,
         Transaction.date <= end_date,
         Transaction.category_id.is_(None) # Filter for NULL category_id
-    ).scalar() or 0.0
+    )
+    if data_type != 'both':
+        uncategorized_query = uncategorized_query.filter(Transaction.type == data_type)
+
+    uncategorized_sum = uncategorized_query.scalar() or 0.0
+
 
     chart_data = []
     labels = []
@@ -529,9 +529,6 @@ def get_transactions_data():
     colors = []
 
     for name, color, total_amount in results:
-        # If category name is NULL (due to outer join for uncategorized, or deleted category),
-        # this case is handled by the separate uncategorized_sum.
-        # This loop will only process categories that still exist and are linked.
         if name:
             labels.append(name)
             amounts.append(float(total_amount))
@@ -540,8 +537,7 @@ def get_transactions_data():
     if uncategorized_sum > 0:
         labels.append('Uncategorized')
         amounts.append(float(uncategorized_sum))
-        # Provide a default gray color for uncategorized
-        colors.append('#CCCCCC')
+        colors.append('#CCCCCC') # Default gray for uncategorized
 
     # Prepare data for Chart.js
     chart_js_data = {
@@ -574,7 +570,7 @@ def get_transactions_data():
 def get_transactions_bar_data():
     user_id = session['user_id']
     period = request.args.get('period', 'month')
-    data_type = request.args.get('dataType', 'expense') # 'expense' or 'income'
+    data_type = request.args.get('dataType', 'expense') # 'expense' or 'income' or 'both'
 
     end_date = datetime.now()
     if period == 'today':
@@ -589,42 +585,23 @@ def get_transactions_bar_data():
     else: # 'all'
         start_date = datetime.min
 
-    # Determine grouping interval for the bar chart
-    if period == 'today' or period == 'week':
-        # Group by hour for 'today', or by day for 'week'
-        if period == 'today':
-            group_by_format = '%H' # Hour of day
-        else: # week
-            group_by_format = '%Y-%m-%d' # YYYY-MM-DD
-    elif period == 'month':
-        group_by_format = '%Y-%m-%d' # Day of month
-    elif period == 'year':
-        group_by_format = '%Y-%m' # Month of year
-    else: # 'all'
-        group_by_format = '%Y' # Year
+    # Base query filters
+    base_filters = [
+        Transaction.user_id == user_id,
+        Transaction.date >= start_date,
+        Transaction.date <= end_date
+    ]
 
+    if data_type != 'both': # Add type filter only if not 'both'
+        base_filters.append(Transaction.type == data_type)
 
-    # Use db.extract for PostgreSQL date part extraction (e.g., EXTRACT(HOUR FROM date))
-    # Or, use db.func.to_char for flexible formatting as per group_by_format
-    # This example uses to_char for more flexible grouping strings.
-    # Note: to_char might require specific locale settings or careful handling of timezone awareness.
-    # For simplicity, we'll try to aggregate and then format in Python if to_char is complex.
-    # A simpler approach for consistent grouping in SQLAlchemy is often to group by date parts
-    # directly or convert to date-only.
-
-    # This approach fetches aggregated daily/monthly/yearly data and then formats labels in Python
-    # for cleaner grouping, handling potential timezone nuances between DB and Python.
 
     if period == 'today': # Group by hour
         raw_data = db.session.query(
             db.func.date_trunc('hour', Transaction.date).label('hour'),
             db.func.sum(Transaction.amount).label('total')
-        ).filter(
-            Transaction.user_id == user_id,
-            Transaction.type == data_type,
-            Transaction.date >= start_date,
-            Transaction.date <= end_date
-        ).group_by(db.func.date_trunc('hour', Transaction.date))\
+        ).filter(*base_filters)\
+        .group_by(db.func.date_trunc('hour', Transaction.date))\
         .order_by('hour')\
         .all()
         # Create a full list of hours for labels
@@ -637,16 +614,11 @@ def get_transactions_bar_data():
         raw_data = db.session.query(
             db.func.date_trunc('day', Transaction.date).label('day'),
             db.func.sum(Transaction.amount).label('total')
-        ).filter(
-            Transaction.user_id == user_id,
-            Transaction.type == data_type,
-            Transaction.date >= start_date,
-            Transaction.date <= end_date
-        ).group_by(db.func.date_trunc('day', Transaction.date))\
+        ).filter(*base_filters)\
+        .group_by(db.func.date_trunc('day', Transaction.date))\
         .order_by('day')\
         .all()
         # Create a full list of days for labels (Mon-Sun)
-        # Adjust for Sunday being 0 in some systems, use 0-6 for Mon-Sun
         current_week_days = [(start_date + timedelta(days=i)).strftime('%a %d') for i in range(7)]
         data_map = {item.day.strftime('%a %d'): float(item.total) for item in raw_data}
         amounts = [data_map.get(label, 0) for label in current_week_days]
@@ -656,12 +628,8 @@ def get_transactions_bar_data():
         raw_data = db.session.query(
             db.func.date_trunc('day', Transaction.date).label('day'),
             db.func.sum(Transaction.amount).label('total')
-        ).filter(
-            Transaction.user_id == user_id,
-            Transaction.type == data_type,
-            Transaction.date >= start_date,
-            Transaction.date <= end_date
-        ).group_by(db.func.date_trunc('day', Transaction.date))\
+        ).filter(*base_filters)\
+        .group_by(db.func.date_trunc('day', Transaction.date))\
         .order_by('day')\
         .all()
         # Create a full list of days for labels
@@ -675,12 +643,8 @@ def get_transactions_bar_data():
         raw_data = db.session.query(
             db.func.date_trunc('month', Transaction.date).label('month'),
             db.func.sum(Transaction.amount).label('total')
-        ).filter(
-            Transaction.user_id == user_id,
-            Transaction.type == data_type,
-            Transaction.date >= start_date,
-            Transaction.date <= end_date
-        ).group_by(db.func.date_trunc('month', Transaction.date))\
+        ).filter(*base_filters)\
+        .group_by(db.func.date_trunc('month', Transaction.date))\
         .order_by('month')\
         .all()
         # Create a full list of months for labels
@@ -693,25 +657,25 @@ def get_transactions_bar_data():
         raw_data = db.session.query(
             db.func.date_trunc('year', Transaction.date).label('year'),
             db.func.sum(Transaction.amount).label('total')
-        ).filter(
-            Transaction.user_id == user_id,
-            Transaction.type == data_type,
-            Transaction.date >= start_date,
-            Transaction.date <= end_date
-        ).group_by(db.func.date_trunc('year', Transaction.date))\
+        ).filter(*base_filters)\
+        .group_by(db.func.date_trunc('year', Transaction.date))\
         .order_by('year')\
         .all()
         labels = [str(int(item.year.year)) for item in raw_data] # Extract year as integer
         amounts = [float(item.total) for item in raw_data]
 
-
+    # For 'both' income and expense, if bar chart needs a unified color, you might pick a neutral one
+    # or handle it in the frontend. For now, it will use the expense color by default, which can be adjusted.
+    # A more sophisticated approach for 'both' might involve two datasets or a different visualization.
+    # For now, if data_type is 'both', we'll just use a default color, as we can't easily assign
+    # income/expense specific colors to combined bars without more complex logic.
     chart_js_data = {
         'labels': labels,
         'datasets': [{
             'label': f'{data_type.capitalize()} by {period}',
             'data': amounts,
-            'backgroundColor': '#fc5723' if data_type == 'expense' else '#28a745',
-            'borderColor': '#fc5723' if data_type == 'expense' else '#28a745',
+            'backgroundColor': '#fc5723' if data_type == 'expense' else ('#28a745' if data_type == 'income' else '#6c757d'), # Neutral gray for 'both'
+            'borderColor': '#fc5723' if data_type == 'expense' else ('#28a745' if data_type == 'income' else '#6c757d'),
             'borderWidth': 1
         }]
     }
@@ -738,4 +702,3 @@ if __name__ == '__main__':
     # with app.app_context():
     #     db.create_all() # This creates tables based on models - use with caution in production!
     app.run(debug=True)
-
