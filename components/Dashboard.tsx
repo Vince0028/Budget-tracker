@@ -3,7 +3,7 @@ import React from 'react';
 import { Transaction, TransactionType, Budget } from '../types';
 import { QCard } from './UI/QuirkyComponents';
 import { ArrowUpRight, ArrowDownRight, Wallet, PiggyBank, PieChart } from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Cell, CartesianGrid, ReferenceLine } from 'recharts';
 
 interface Props {
     transactions: Transaction[];
@@ -103,12 +103,38 @@ const Dashboard: React.FC<Props> = ({ transactions, budgets }) => {
                 <QCard title="Cash Flow" className="lg:col-span-2">
                     <div className="h-[200px] w-full mt-4">
                         <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={chartData}>
-                                <XAxis dataKey="date" hide />
+                            <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                                <defs>
+                                    <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
+                                        <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e7e5e4" strokeOpacity={0.5} />
+                                {/* <XAxis dataKey="date" hide /> */}
                                 <Tooltip
-                                    contentStyle={{ backgroundColor: '#f5f5f4', borderRadius: '4px', border: '1px solid #d6d3d1' }}
+                                    cursor={{ stroke: '#a8a29e', strokeWidth: 1, strokeDasharray: '4 4' }}
+                                    contentStyle={{
+                                        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                                        borderRadius: '12px',
+                                        border: 'none',
+                                        boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+                                        padding: '12px 16px'
+                                    }}
+                                    itemStyle={{ color: '#1c1917', fontWeight: 'bold' }}
+                                    formatter={(value: number) => [`₱${Math.abs(value).toLocaleString()}`, value > 0 ? 'Income' : 'Expense']}
+                                    labelStyle={{ display: 'none' }}
                                 />
-                                <Area type="stepAfter" dataKey="amount" stroke="#57534e" fill="#d6d3d1" fillOpacity={0.4} strokeWidth={2} />
+                                <Area
+                                    type="monotone"
+                                    dataKey="amount"
+                                    stroke="#8b5cf6"
+                                    strokeWidth={3}
+                                    fillOpacity={1}
+                                    fill="url(#colorAmount)"
+                                    animationDuration={1500}
+                                />
+                                <ReferenceLine y={0} stroke="#a8a29e" strokeDasharray="3 3" />
                             </AreaChart>
                         </ResponsiveContainer>
                     </div>

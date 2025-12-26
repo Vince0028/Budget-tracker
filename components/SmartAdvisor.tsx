@@ -41,11 +41,7 @@ const SmartAdvisor: React.FC<Props> = ({ transactions, budgets }) => {
         setAnalyzing(false);
     };
 
-    useEffect(() => {
-        if (transactions.length > 0 && !advice) {
-            fetchInsights();
-        }
-    }, [transactions.length]);
+
 
     if (transactions.length === 0) {
         return (
@@ -67,15 +63,19 @@ const SmartAdvisor: React.FC<Props> = ({ transactions, budgets }) => {
                         <h4 className="font-bold text-stone-500 text-[10px] uppercase tracking-widest">Next Month Estimate</h4>
                         {loading ? (
                             <div className="h-8 w-32 bg-stone-200 dark:bg-stone-700 animate-pulse rounded mt-1" />
-                        ) : (
+                        ) : prediction ? (
                             <div className="text-3xl font-black text-stone-900 dark:text-stone-100">
-                                ₱{prediction?.prediction.toLocaleString()}
+                                ₱{prediction.prediction.toLocaleString()}
+                            </div>
+                        ) : (
+                            <div className="text-3xl font-black text-stone-300 dark:text-stone-700">
+                                ---
                             </div>
                         )}
                     </div>
                 </div>
                 <p className="text-sm text-stone-600 dark:text-stone-400 leading-relaxed italic border-l-2 border-stone-300 dark:border-stone-700 pl-4">
-                    {loading ? "Analyzing patterns..." : prediction?.reasoning}
+                    {loading ? "Analyzing patterns..." : (prediction?.reasoning || "Click 'Generate Financial Insights' to view forecast.")}
                 </p>
             </QCard>
 
@@ -86,6 +86,13 @@ const SmartAdvisor: React.FC<Props> = ({ transactions, budgets }) => {
                             <div className="h-3 bg-stone-200 dark:bg-stone-700 rounded w-3/4 animate-pulse" />
                             <div className="h-3 bg-stone-200 dark:bg-stone-700 rounded w-full animate-pulse" />
                             <div className="h-3 bg-stone-200 dark:bg-stone-700 rounded w-5/6 animate-pulse" />
+                        </div>
+                    ) : !advice ? (
+                        <div className="text-center py-8">
+                            <QButton onClick={fetchInsights} className="mx-auto">
+                                <Sparkles size={18} className="mr-2" /> Generate Financial Insights
+                            </QButton>
+                            <p className="text-xs text-stone-400 mt-4">Powered by Gemini AI</p>
                         </div>
                     ) : (
                         <div className="text-stone-700 dark:text-stone-300 text-sm leading-relaxed">
@@ -100,11 +107,13 @@ const SmartAdvisor: React.FC<Props> = ({ transactions, budgets }) => {
                         </div>
                     )}
                 </div>
-                <div className="mt-8 flex justify-end">
-                    <QButton variant="ghost" onClick={fetchInsights} loading={loading} className="text-[10px] uppercase font-bold tracking-widest">
-                        <Sparkles size={14} className="mr-2" /> Refresh Wisdom
-                    </QButton>
-                </div>
+                {advice && (
+                    <div className="mt-8 flex justify-end">
+                        <QButton variant="ghost" onClick={fetchInsights} loading={loading} className="text-[10px] uppercase font-bold tracking-widest">
+                            <Sparkles size={14} className="mr-2" /> Refresh Wisdom
+                        </QButton>
+                    </div>
+                )}
             </QCard>
             <QCard title="Deep Analysis" className="md:col-span-2 bg-gradient-to-br from-stone-800 to-stone-900 text-stone-100 border-none shadow-xl">
                 <div className="flex flex-col md:flex-row gap-6 items-center">

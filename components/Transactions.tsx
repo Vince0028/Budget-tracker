@@ -1,20 +1,22 @@
 
 import React, { useState, useRef } from 'react';
-import { Transaction, TransactionType, CATEGORIES, EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '../types';
+import { Transaction, TransactionType, CATEGORIES, EXPENSE_CATEGORIES, INCOME_CATEGORIES, Budget } from '../types';
 import { QButton, QInput, QSelect, QCard, QBadge } from './UI/QuirkyComponents';
-import { Trash2, Plus, Upload, Search, FileText, AlertCircle } from 'lucide-react';
+import { Trash2, Plus, Upload, Search, FileText, AlertCircle, Pencil } from 'lucide-react';
 import { parseReceiptImage } from '../services/geminiService';
 
 interface Props {
   transactions: Transaction[];
+  budgets: Budget[];
   onAdd: (t: Transaction) => void;
   onDelete: (id: string) => void;
 }
 
-const Transactions: React.FC<Props> = ({ transactions, onAdd, onDelete }) => {
+const Transactions: React.FC<Props> = ({ transactions, budgets, onAdd, onDelete }) => {
   const [filter, setFilter] = useState('');
   const [isAdding, setIsAdding] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const [newTrans, setNewTrans] = useState<Partial<Transaction>>({
     type: TransactionType.EXPENSE,
@@ -56,7 +58,7 @@ const Transactions: React.FC<Props> = ({ transactions, onAdd, onDelete }) => {
       : newTrans.category!;
 
     onAdd({
-      id: crypto.randomUUID(),
+      id: editingId || crypto.randomUUID(),
       date: newTrans.date!,
       amount: Number(newTrans.amount),
       vendor: newTrans.vendor!,
@@ -66,6 +68,7 @@ const Transactions: React.FC<Props> = ({ transactions, onAdd, onDelete }) => {
     });
 
     setIsAdding(false);
+    setEditingId(null);
     setCustomCategory('');
     setNewTrans({
       type: TransactionType.EXPENSE,
@@ -77,10 +80,30 @@ const Transactions: React.FC<Props> = ({ transactions, onAdd, onDelete }) => {
     });
   };
 
+  const handleEdit = (t: Transaction) => {
+    const isCustom = !EXPENSE_CATEGORIES.includes(t.category) && !INCOME_CATEGORIES.includes(t.category);
+    setNewTrans({
+      ...t
+    });
+    if (isCustom) {
+      setNewTrans(prev => ({ ...prev, category: 'Other' }));
+      setCustomCategory(t.category);
+    } else {
+      setCustomCategory('');
+    }
+
+    setEditingId(t.id);
+    setIsAdding(true);
+  };
+
   const filteredTransactions = transactions.filter(t =>
     t.vendor.toLowerCase().includes(filter.toLowerCase()) ||
     t.category.toLowerCase().includes(filter.toLowerCase())
   );
+
+  // Dynamic expense categories based on budgets
+  const budgetCategories = budgets.map(b => b.category);
+  const allExpenseCategories = Array.from(new Set([...EXPENSE_CATEGORIES, ...budgetCategories]));
 
   return (
     <div className="space-y-6">
@@ -97,7 +120,18 @@ const Transactions: React.FC<Props> = ({ transactions, onAdd, onDelete }) => {
           <QButton variant="secondary" onClick={() => fileInputRef.current?.click()} loading={isScanning}>
             <Upload size={18} /> Scan Receipt
           </QButton>
-          <QButton onClick={() => setIsAdding(!isAdding)}>
+          <QButton onClick={() => {
+            setIsAdding(!isAdding);
+            setEditingId(null);
+            setNewTrans({
+              type: TransactionType.EXPENSE,
+              date: new Date().toISOString().split('T')[0],
+              category: CATEGORIES[0],
+              amount: 0,
+              vendor: '',
+              description: ''
+            });
+          }}>
             {isAdding ? 'Cancel' : <><Plus size={18} /> Add New</>}
           </QButton>
         </div>
@@ -149,7 +183,7 @@ const Transactions: React.FC<Props> = ({ transactions, onAdd, onDelete }) => {
                 if (e.target.value !== 'Other') setCustomCategory('');
               }}
             >
-              {(newTrans.type === TransactionType.INCOME ? INCOME_CATEGORIES : EXPENSE_CATEGORIES).map(c =>
+              {(newTrans.type === TransactionType.INCOME ? INCOME_CATEGORIES : allExpenseCategories).map(c =>
                 <option key={c} value={c}>{c}</option>
               )}
             </QSelect>
@@ -164,8 +198,9 @@ const Transactions: React.FC<Props> = ({ transactions, onAdd, onDelete }) => {
                 />
               </div>
             )}
-            <div className="md:col-span-2 flex justify-end mt-2">
-              <QButton type="submit">Save Transaction</QButton>
+            <div className="md:col-span-2 flex justify-end mt-2 gap-2">
+              <QButton type="button" variant="ghost" onClick={() => setIsAdding(false)}>Cancel</QButton>
+              <QButton type="submit">{editingId ? 'Update Transaction' : 'Save Transaction'}</QButton>
             </div>
           </form>
         </QCard>
@@ -207,6 +242,12 @@ const Transactions: React.FC<Props> = ({ transactions, onAdd, onDelete }) => {
                 <span className={`font-mono font-bold text-lg ${t.type === TransactionType.INCOME ? 'text-green-600 dark:text-green-400' : 'text-stone-800 dark:text-stone-200'}`}>
                   {t.type === TransactionType.INCOME ? '+' : '-'}₱{t.amount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
+                <button
+                  onClick={() => handleEdit(t)}
+                  className="opacity-0 group-hover:opacity-100 p-2 text-stone-400 hover:text-stone-700 dark:hover:text-stone-300 transition-opacity"
+                >
+                  <Pencil size={18} />
+                </button>
                 <button
                   onClick={() => onDelete(t.id)}
                   className="opacity-0 group-hover:opacity-100 p-2 text-red-400 hover:text-red-600 transition-opacity"

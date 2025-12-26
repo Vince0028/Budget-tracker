@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Budget, Transaction, TransactionType, EXPENSE_CATEGORIES, THEME_COLORS } from '../types';
 import { QButton, QInput, QSelect, QCard } from './UI/QuirkyComponents';
-import { Trash2, AlertTriangle, Coins, PlusCircle } from 'lucide-react';
+import { Trash2, AlertTriangle, Coins, PlusCircle, Pencil } from 'lucide-react';
 
 interface Props {
     budgets: Budget[];
@@ -14,6 +14,7 @@ const Budgets: React.FC<Props> = ({ budgets, transactions, onUpdateBudgets }) =>
     const [newBudget, setNewBudget] = useState<Partial<Budget>>({ category: EXPENSE_CATEGORIES[0], limit: 100, color: THEME_COLORS[0] });
     const [customCategory, setCustomCategory] = useState('');
     const [showAdd, setShowAdd] = useState(false);
+    const [editingId, setEditingId] = useState<string | null>(null);
 
     const totalIncome = transactions
         .filter(t => t.type === TransactionType.INCOME)
@@ -28,14 +29,44 @@ const Budgets: React.FC<Props> = ({ budgets, transactions, onUpdateBudgets }) =>
             ? customCategory.trim()
             : newBudget.category!;
 
-        const updated = [...budgets, {
-            id: crypto.randomUUID(),
-            category: finalCategory,
-            limit: Number(newBudget.limit),
-            color: newBudget.color!
-        }];
-        onUpdateBudgets(updated);
+        if (editingId) {
+            // Update existing
+            const updated = budgets.map(b => b.id === editingId ? {
+                ...b,
+                category: finalCategory,
+                limit: Number(newBudget.limit),
+                color: newBudget.color!
+            } : b);
+            onUpdateBudgets(updated);
+        } else {
+            // Create new
+            const updated = [...budgets, {
+                id: crypto.randomUUID(),
+                category: finalCategory,
+                limit: Number(newBudget.limit),
+                color: newBudget.color!
+            }];
+            onUpdateBudgets(updated);
+        }
+
         setShowAdd(false);
+        setEditingId(null);
+        setNewBudget({ category: EXPENSE_CATEGORIES[0], limit: 100, color: THEME_COLORS[0] });
+        setCustomCategory('');
+    };
+
+    const handleEdit = (budget: Budget) => {
+        const isCustom = !EXPENSE_CATEGORIES.includes(budget.category);
+        setNewBudget({
+            category: isCustom ? 'Other' : budget.category,
+            limit: budget.limit,
+            color: budget.color
+        });
+        if (isCustom) setCustomCategory(budget.category);
+        else setCustomCategory('');
+
+        setEditingId(budget.id);
+        setShowAdd(true);
     };
 
     const handleDelete = (id: string) => {
@@ -76,7 +107,7 @@ const Budgets: React.FC<Props> = ({ budgets, transactions, onUpdateBudgets }) =>
 
             {showAdd && (
                 <div className="animate-in zoom-in-95 duration-200">
-                    <QCard title="Assign Income" className="bg-stone-50 dark:bg-stone-900 border-dashed border-2">
+                    <QCard title={editingId ? "Edit Allocation" : "Assign Income"} className="bg-stone-50 dark:bg-stone-900 border-dashed border-2">
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                             <QSelect
                                 label="Category"
@@ -113,8 +144,12 @@ const Budgets: React.FC<Props> = ({ budgets, transactions, onUpdateBudgets }) =>
                                 {THEME_COLORS.map((c, i) => <option key={i} value={c}>Palette {i + 1}</option>)}
                             </QSelect>
                             <div className="flex gap-2">
-                                <QButton onClick={handleAdd} className="flex-1">Assign</QButton>
-                                <QButton variant="ghost" onClick={() => setShowAdd(false)}>Cancel</QButton>
+                                <QButton onClick={handleAdd} className="flex-1">{editingId ? 'Update' : 'Assign'}</QButton>
+                                <QButton variant="ghost" onClick={() => {
+                                    setShowAdd(false);
+                                    setEditingId(null);
+                                    setNewBudget({ category: EXPENSE_CATEGORIES[0], limit: 100, color: THEME_COLORS[0] });
+                                }}>Cancel</QButton>
                             </div>
                         </div>
                     </QCard>
@@ -138,9 +173,14 @@ const Budgets: React.FC<Props> = ({ budgets, transactions, onUpdateBudgets }) =>
                                         <span className="text-[10px] font-bold text-stone-400 uppercase tracking-tighter">Budget Allocation</span>
                                     </div>
                                 </div>
-                                <button onClick={() => handleDelete(budget.id)} className="text-stone-300 hover:text-red-400 transition-colors p-1">
-                                    <Trash2 size={16} />
-                                </button>
+                                <div className="flex gap-1">
+                                    <button onClick={() => handleEdit(budget)} className="text-stone-300 hover:text-stone-600 dark:hover:text-stone-100 transition-colors p-1">
+                                        <Pencil size={16} />
+                                    </button>
+                                    <button onClick={() => handleDelete(budget.id)} className="text-stone-300 hover:text-red-400 transition-colors p-1">
+                                        <Trash2 size={16} />
+                                    </button>
+                                </div>
                             </div>
 
                             <div className="mt-auto">
