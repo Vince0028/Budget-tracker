@@ -2,7 +2,11 @@
 import React, { useState } from 'react';
 import { Budget, Transaction, TransactionType, EXPENSE_CATEGORIES, THEME_COLORS } from '../types';
 import { QButton, QInput, QSelect, QCard } from './UI/QuirkyComponents';
-import { Trash2, AlertTriangle, Coins, PlusCircle, Pencil } from 'lucide-react';
+import ConfirmModal from './ConfirmModal';
+import { Trash2, AlertTriangle, Coins, PlusCircle, Pencil, GripVertical } from 'lucide-react';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, rectSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface Props {
     budgets: Budget[];
@@ -10,11 +14,34 @@ interface Props {
     onUpdateBudgets: (budgets: Budget[]) => void;
 }
 
+const SortableBudgetCard = ({ budget, children }: { budget: Budget, children: React.ReactNode }) => {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: budget.id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        zIndex: isDragging ? 20 : 'auto', // Higher z-index while dragging
+        opacity: isDragging ? 0.8 : 1,
+        touchAction: 'none', // Critical for touch dragging
+    };
+
+    return (
+        <div ref={setNodeRef} style={style} className="h-full relative select-none" {...attributes} {...listeners}>
+            {/* Grip handle as a visual hint, but interaction is now on the whole card via listeners above */}
+            <div className="absolute top-6 left-5 z-20 text-stone-200 dark:text-stone-700">
+                <GripVertical size={20} />
+            </div>
+            {children}
+        </div>
+    );
+};
+
 const Budgets: React.FC<Props> = ({ budgets, transactions, onUpdateBudgets }) => {
     const [newBudget, setNewBudget] = useState<Partial<Budget>>({ category: EXPENSE_CATEGORIES[0], limit: 100, color: THEME_COLORS[0] });
     const [customCategory, setCustomCategory] = useState('');
     const [showAdd, setShowAdd] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
+    const [confirmState, setConfirmState] = useState<{ type: 'delete' | 'edit' | null; id: string | null; data?: Budget }>({ type: null, id: null });
 
     const totalIncome = transactions
         .filter(t => t.type === TransactionType.INCOME)
@@ -55,7 +82,11 @@ const Budgets: React.FC<Props> = ({ budgets, transactions, onUpdateBudgets }) =>
         setCustomCategory('');
     };
 
-    const handleEdit = (budget: Budget) => {
+    const handleEditClick = (budget: Budget) => {
+        setConfirmState({ type: 'edit', id: budget.id, data: budget });
+    };
+
+    const proceedWithEdit = (budget: Budget) => {
         const isCustom = !EXPENSE_CATEGORIES.includes(budget.category);
         setNewBudget({
             category: isCustom ? 'Other' : budget.category,
@@ -73,14 +104,50 @@ const Budgets: React.FC<Props> = ({ budgets, transactions, onUpdateBudgets }) =>
         onUpdateBudgets(budgets.filter(b => b.id !== id));
     };
 
+    const handleConfirmAction = () => {
+        if (confirmState.type === 'delete' && confirmState.id) {
+            handleDelete(confirmState.id);
+        } else if (confirmState.type === 'edit' && confirmState.data) {
+            proceedWithEdit(confirmState.data);
+        }
+        setConfirmState({ type: null, id: null });
+    };
+
     const getSpent = (category: string) => {
         return transactions
             .filter(t => t.type === TransactionType.EXPENSE && t.category === category)
             .reduce((acc, t) => acc + t.amount, 0);
     };
 
+    const sensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+        useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }), // 250ms press and hold
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    );
+
+    const handleDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+        if (active.id !== over?.id) {
+            const oldIndex = budgets.findIndex((b) => b.id === active.id);
+            const newIndex = budgets.findIndex((b) => b.id === over?.id);
+            onUpdateBudgets(arrayMove(budgets, oldIndex, newIndex));
+        }
+    };
+
     return (
         <div className="space-y-8 pb-20">
+            <ConfirmModal
+                isOpen={!!confirmState.type}
+                onClose={() => setConfirmState({ type: null, id: null })}
+                onConfirm={handleConfirmAction}
+                title={confirmState.type === 'delete' ? "Delete Budget?" : "Edit Budget?"}
+                message={confirmState.type === 'delete'
+                    ? "Are you sure you want to delete this budget allocation? It will be removed from your plan."
+                    : "Are you sure you want to edit this allocation? You can change the limit and category."}
+                confirmText={confirmState.type === 'delete' ? "Yes, Delete" : "Yes, Edit"}
+                variant={confirmState.type === 'delete' ? 'danger' : 'primary'}
+            />
+
             {/* Allocation Header */}
             <div className="relative p-8 bg-stone-100 dark:bg-stone-900 rounded-tl-[40px] rounded-br-[60px] border-b-4 border-r-4 border-stone-200 dark:border-stone-800 transition-all">
                 <div className="flex flex-col md:flex-row justify-between items-center gap-6">
@@ -157,67 +224,80 @@ const Budgets: React.FC<Props> = ({ budgets, transactions, onUpdateBudgets }) =>
             )}
 
             {/* Categories Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {budgets.map(budget => {
-                    const spent = getSpent(budget.category);
-                    const percent = Math.min((spent / budget.limit) * 100, 100);
-                    const isOver = spent > budget.limit;
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                <SortableContext items={budgets.map(b => b.id)} strategy={rectSortingStrategy}>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {budgets.map(budget => {
+                            const spent = getSpent(budget.category);
+                            const percent = Math.min((spent / budget.limit) * 100, 100);
+                            const isOver = spent > budget.limit;
 
-                    return (
-                        <QCard key={budget.id} className="relative group flex flex-col h-full border-b-[4px] border-r-[3px]">
-                            <div className="flex justify-between items-start mb-6">
-                                <div className="flex flex-col">
-                                    <h3 className="font-black text-lg text-stone-800 dark:text-stone-200 tracking-tight">{budget.category}</h3>
-                                    <div className="flex items-center gap-1.5 mt-1">
-                                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: budget.color }}></div>
-                                        <span className="text-[10px] font-bold text-stone-400 uppercase tracking-tighter">Budget Allocation</span>
-                                    </div>
-                                </div>
-                                <div className="flex gap-1">
-                                    <button onClick={() => handleEdit(budget)} className="text-stone-300 hover:text-stone-600 dark:hover:text-stone-100 transition-colors p-1">
-                                        <Pencil size={16} />
-                                    </button>
-                                    <button onClick={() => handleDelete(budget.id)} className="text-stone-300 hover:text-red-400 transition-colors p-1">
-                                        <Trash2 size={16} />
-                                    </button>
-                                </div>
-                            </div>
+                            return (
+                                <SortableBudgetCard key={budget.id} budget={budget}>
+                                    <QCard className="relative group flex flex-col h-full border-b-[4px] border-r-[3px]">
+                                        <div className="flex justify-between items-start mb-6">
+                                            <div className="flex flex-col">
+                                                <div className="flex items-center gap-2 pl-6">
+                                                    {/* Start Drag Handle using a temporary internal component or direct integration might be tricky with separate Card. 
+                                                        Actually, let's grab the sortable props in a subcomponent wrapper.
+                                                        Check above SortableBudgetCard implementation. It wraps the QCard.
+                                                        Now we need to pass the drag handle.
+                                                     */}
+                                                    <h3 className="font-black text-lg text-stone-800 dark:text-stone-200 tracking-tight">{budget.category}</h3>
+                                                </div>
+                                                <div className="flex items-center gap-1.5 mt-1 ml-6">
+                                                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: budget.color }}></div>
+                                                    <span className="text-[10px] font-bold text-stone-400 uppercase tracking-tighter">Budget Allocation</span>
+                                                </div>
+                                            </div>
+                                            <div className="flex gap-1">
+                                                <button onClick={() => handleEditClick(budget)} className="text-stone-300 hover:text-stone-600 dark:hover:text-stone-100 transition-colors p-1">
+                                                    <Pencil size={16} />
+                                                </button>
+                                                <button onClick={() => setConfirmState({ type: 'delete', id: budget.id })} className="text-stone-300 hover:text-red-400 transition-colors p-1">
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
+                                        </div>
 
-                            <div className="mt-auto">
-                                <div className="flex justify-between items-baseline mb-2">
-                                    <span className={`text-2xl font-black ${isOver ? 'text-red-500' : 'text-stone-800 dark:text-stone-100'}`}>
-                                        ₱{spent.toFixed(0)}
-                                    </span>
-                                    <span className="text-stone-400 text-xs font-mono">OF ₱{budget.limit}</span>
-                                </div>
+                                        <div className="mt-auto">
+                                            <div className="flex justify-between items-baseline mb-2">
+                                                <span className={`text-2xl font-black ${isOver ? 'text-red-500' : 'text-stone-800 dark:text-stone-100'}`}>
+                                                    ₱{spent.toFixed(0)}
+                                                </span>
+                                                <span className="text-stone-400 text-xs font-mono">OF ₱{budget.limit}</span>
+                                            </div>
 
-                                {/* Hand-drawn feel progress bar */}
-                                <div className="h-2.5 w-full bg-stone-100 dark:bg-stone-800 rounded-lg overflow-hidden border border-stone-200 dark:border-stone-700 relative mb-2">
-                                    <div
-                                        className="h-full transition-all duration-1000 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
-                                        style={{
-                                            width: `${percent}%`,
-                                            backgroundColor: isOver ? '#ef4444' : budget.color,
-                                            borderRadius: '0 10px 10px 0'
-                                        }}
-                                    />
-                                </div>
+                                            {/* Hand-drawn feel progress bar */}
+                                            <div className="h-2.5 w-full bg-stone-100 dark:bg-stone-800 rounded-lg overflow-hidden border border-stone-200 dark:border-stone-700 relative mb-2">
+                                                <div
+                                                    className="h-full transition-all duration-1000 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
+                                                    style={{
+                                                        width: `${percent}%`,
+                                                        backgroundColor: isOver ? '#ef4444' : budget.color,
+                                                        borderRadius: '0 10px 10px 0'
+                                                    }}
+                                                />
+                                            </div>
 
-                                <div className="flex justify-between items-center text-[10px] font-black text-stone-400 uppercase">
-                                    <span>{percent.toFixed(0)}% Utilized</span>
-                                    <span>₱{(budget.limit - spent).toFixed(0)} Left</span>
-                                </div>
-                            </div>
+                                            <div className="flex justify-between items-center text-[10px] font-black text-stone-400 uppercase">
+                                                <span>{percent.toFixed(0)}% Utilized</span>
+                                                <span>₱{(budget.limit - spent).toFixed(0)} Left</span>
+                                            </div>
+                                        </div>
 
-                            {isOver && (
-                                <div className="absolute top-2 right-12 text-red-500 animate-bounce">
-                                    <AlertTriangle size={16} />
-                                </div>
-                            )}
-                        </QCard>
-                    );
-                })}
-            </div>
+                                        {isOver && (
+                                            <div className="absolute top-2 right-12 text-red-500 animate-bounce">
+                                                <AlertTriangle size={16} />
+                                            </div>
+                                        )}
+                                    </QCard>
+                                </SortableBudgetCard>
+                            );
+                        })}
+                    </div>
+                </SortableContext>
+            </DndContext>
 
             {budgets.length === 0 && (
                 <div className="text-center py-20 border-2 border-dashed border-stone-200 dark:border-stone-800 rounded-3xl">

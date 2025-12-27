@@ -2,21 +2,77 @@
 import React, { useState, useRef } from 'react';
 import { Transaction, TransactionType, CATEGORIES, EXPENSE_CATEGORIES, INCOME_CATEGORIES, Budget } from '../types';
 import { QButton, QInput, QSelect, QCard, QBadge } from './UI/QuirkyComponents';
-import { Trash2, Plus, Upload, Search, FileText, AlertCircle, Pencil } from 'lucide-react';
+import ConfirmModal from './ConfirmModal';
+import { Trash2, Plus, Upload, Search, FileText, AlertCircle, Pencil, GripVertical } from 'lucide-react';
 import { parseReceiptImage } from '../services/geminiService';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface Props {
   transactions: Transaction[];
   budgets: Budget[];
   onAdd: (t: Transaction) => void;
   onDelete: (id: string) => void;
+  onReorder?: (transactions: Transaction[]) => void;
 }
 
-const Transactions: React.FC<Props> = ({ transactions, budgets, onAdd, onDelete }) => {
+const SortableTransactionRow = ({ transaction, onEdit, onDelete }: { transaction: Transaction, onEdit: () => void, onDelete: () => void }) => {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: transaction.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 20 : 'auto',
+    opacity: isDragging ? 0.8 : 1,
+    position: 'relative' as 'relative', // Explicit cast
+    touchAction: 'none',
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="group bg-white dark:bg-stone-900 p-4 border-b-2 border-stone-100 dark:border-stone-800 hover:bg-stone-50 dark:hover:bg-stone-800/50 transition-colors flex justify-between items-center rounded-sm select-none" {...attributes} {...listeners}>
+      {/* Visual grip handle, always visible but subtle */}
+      <div className="absolute left-1 top-1/2 -translate-y-1/2 text-stone-200 dark:text-stone-700">
+        <GripVertical size={16} />
+      </div>
+      <div className="flex items-center gap-4 pl-4">
+        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold ${transaction.type === TransactionType.INCOME ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-stone-200 text-stone-600 dark:bg-stone-800 dark:text-stone-400'}`}>
+          {transaction.vendor.charAt(0).toUpperCase()}
+        </div>
+        <div>
+          <h4 className="font-bold text-stone-800 dark:text-stone-200">{transaction.vendor}</h4>
+          <div className="flex gap-2 text-xs text-stone-500">
+            <span>{transaction.category}</span>
+          </div>
+        </div>
+      </div>
+      <div className="flex items-center gap-4">
+        <span className={`font-mono font-bold text-lg ${transaction.type === TransactionType.INCOME ? 'text-green-600 dark:text-green-400' : 'text-stone-800 dark:text-stone-200'}`}>
+          {transaction.type === TransactionType.INCOME ? '+' : '-'}₱{transaction.amount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        </span>
+        <button
+          onClick={onEdit}
+          className="opacity-0 group-hover:opacity-100 p-2 text-stone-400 hover:text-stone-700 dark:hover:text-stone-300 transition-opacity"
+        >
+          <Pencil size={18} />
+        </button>
+        <button
+          onClick={onDelete}
+          className="opacity-0 group-hover:opacity-100 p-2 text-red-400 hover:text-red-600 transition-opacity"
+        >
+          <Trash2 size={18} />
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const Transactions: React.FC<Props> = ({ transactions, budgets, onAdd, onDelete, onReorder }) => {
   const [filter, setFilter] = useState('');
   const [isAdding, setIsAdding] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [confirmState, setConfirmState] = useState<{ type: 'delete' | 'edit' | null; id: string | null; data?: Transaction }>({ type: null, id: null });
 
   const [newTrans, setNewTrans] = useState<Partial<Transaction>>({
     type: TransactionType.EXPENSE,
@@ -80,7 +136,11 @@ const Transactions: React.FC<Props> = ({ transactions, budgets, onAdd, onDelete 
     });
   };
 
-  const handleEdit = (t: Transaction) => {
+  const handleEditClick = (t: Transaction) => {
+    setConfirmState({ type: 'edit', id: t.id, data: t });
+  };
+
+  const proceedWithEdit = (t: Transaction) => {
     const isCustom = !EXPENSE_CATEGORIES.includes(t.category) && !INCOME_CATEGORIES.includes(t.category);
     setNewTrans({
       ...t
@@ -96,10 +156,52 @@ const Transactions: React.FC<Props> = ({ transactions, budgets, onAdd, onDelete 
     setIsAdding(true);
   };
 
+  const handleConfirmAction = () => {
+    if (confirmState.type === 'delete' && confirmState.id) {
+      onDelete(confirmState.id);
+    } else if (confirmState.type === 'edit' && confirmState.data) {
+      proceedWithEdit(confirmState.data);
+    }
+    setConfirmState({ type: null, id: null });
+  };
+
   const filteredTransactions = transactions.filter(t =>
     t.vendor.toLowerCase().includes(filter.toLowerCase()) ||
     t.category.toLowerCase().includes(filter.toLowerCase())
   );
+
+  // Group by date
+  const groupedTransactions = filteredTransactions.reduce((groups, transaction) => {
+    const date = transaction.date;
+    if (!groups[date]) {
+      groups[date] = [];
+    }
+    groups[date].push(transaction);
+    return groups;
+  }, {} as Record<string, Transaction[]>);
+
+  const sortedDates = Object.keys(groupedTransactions).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (active.id !== over?.id && onReorder) {
+      // Find which date group these belong to
+      const activeItem = transactions.find(t => t.id === active.id);
+      const overItem = transactions.find(t => t.id === over?.id);
+
+      if (activeItem && overItem && activeItem.date === overItem.date) {
+        const oldIndex = transactions.findIndex((t) => t.id === active.id);
+        const newIndex = transactions.findIndex((t) => t.id === over?.id);
+        onReorder(arrayMove(transactions, oldIndex, newIndex));
+      }
+    }
+  };
 
   // Dynamic expense categories based on budgets
   const budgetCategories = budgets.map(b => b.category);
@@ -136,6 +238,18 @@ const Transactions: React.FC<Props> = ({ transactions, budgets, onAdd, onDelete 
           </QButton>
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={!!confirmState.type}
+        onClose={() => setConfirmState({ type: null, id: null })}
+        onConfirm={handleConfirmAction}
+        title={confirmState.type === 'delete' ? "Delete Transaction?" : "Edit Transaction?"}
+        message={confirmState.type === 'delete'
+          ? "Are you sure you want to delete this transaction? This action cannot be undone."
+          : "Are you sure you want to edit this transaction? You'll be able to modify all details."}
+        confirmText={confirmState.type === 'delete' ? "Yes, Delete" : "Yes, Edit"}
+        variant={confirmState.type === 'delete' ? 'danger' : 'primary'}
+      />
 
       {isAdding && (
         <QCard className="animate-in slide-in-from-top-4 fade-in duration-300 border-l-4 border-l-stone-800 dark:border-l-stone-400">
@@ -216,49 +330,37 @@ const Transactions: React.FC<Props> = ({ transactions, budgets, onAdd, onDelete 
         />
       </div>
 
-      <div className="grid gap-3">
-        {filteredTransactions.length === 0 ? (
-          <div className="text-center py-12 text-stone-500">
-            <FileText size={48} className="mx-auto mb-4 opacity-20" />
-            <p>No transactions found.</p>
-          </div>
-        ) : (
-          filteredTransactions.map(t => (
-            <div key={t.id} className="group bg-white dark:bg-stone-900 p-4 border-b-2 border-stone-100 dark:border-stone-800 hover:bg-stone-50 dark:hover:bg-stone-800/50 transition-colors flex justify-between items-center rounded-sm">
-              <div className="flex items-center gap-4">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold ${t.type === TransactionType.INCOME ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-stone-200 text-stone-600 dark:bg-stone-800 dark:text-stone-400'}`}>
-                  {t.vendor.charAt(0).toUpperCase()}
-                </div>
-                <div>
-                  <h4 className="font-bold text-stone-800 dark:text-stone-200">{t.vendor}</h4>
-                  <div className="flex gap-2 text-xs text-stone-500">
-                    <span>{t.date}</span>
-                    <span>•</span>
-                    <span>{t.category}</span>
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-4">
-                <span className={`font-mono font-bold text-lg ${t.type === TransactionType.INCOME ? 'text-green-600 dark:text-green-400' : 'text-stone-800 dark:text-stone-200'}`}>
-                  {t.type === TransactionType.INCOME ? '+' : '-'}₱{t.amount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </span>
-                <button
-                  onClick={() => handleEdit(t)}
-                  className="opacity-0 group-hover:opacity-100 p-2 text-stone-400 hover:text-stone-700 dark:hover:text-stone-300 transition-opacity"
-                >
-                  <Pencil size={18} />
-                </button>
-                <button
-                  onClick={() => onDelete(t.id)}
-                  className="opacity-0 group-hover:opacity-100 p-2 text-red-400 hover:text-red-600 transition-opacity"
-                >
-                  <Trash2 size={18} />
-                </button>
-              </div>
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <div className="grid gap-6">
+          {filteredTransactions.length === 0 ? (
+            <div className="text-center py-12 text-stone-500">
+              <FileText size={48} className="mx-auto mb-4 opacity-20" />
+              <p>No transactions found.</p>
             </div>
-          ))
-        )}
-      </div>
+          ) : (
+            sortedDates.map(date => (
+              <div key={date} className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="flex items-center gap-2 mb-2 sticky top-0 bg-stone-50/95 dark:bg-stone-950/95 backdrop-blur-sm p-2 z-10">
+                  <h3 className="text-sm font-bold text-stone-400 uppercase tracking-wider">{new Date(date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</h3>
+                  <div className="h-px bg-stone-200 dark:bg-stone-800 flex-1"></div>
+                </div>
+                <SortableContext items={groupedTransactions[date].map(t => t.id)} strategy={verticalListSortingStrategy}>
+                  <div className="bg-white dark:bg-stone-900 rounded-lg shadow-sm overflow-hidden">
+                    {groupedTransactions[date].map(t => (
+                      <SortableTransactionRow
+                        key={t.id}
+                        transaction={t}
+                        onEdit={() => handleEditClick(t)}
+                        onDelete={() => setConfirmState({ type: 'delete', id: t.id })}
+                      />
+                    ))}
+                  </div>
+                </SortableContext>
+              </div>
+            ))
+          )}
+        </div>
+      </DndContext>
     </div>
   );
 };
