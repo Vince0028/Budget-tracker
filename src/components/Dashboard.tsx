@@ -33,11 +33,25 @@ const Dashboard: React.FC<Props> = ({ transactions, budgets }) => {
         return acc;
     }, {} as Record<string, { income: number, expense: number }>);
 
-    // Generate last 30 days to ensure continuous timeline
+    // Generate chart data dynamic range
+    const sortedDates = transactions.map(t => new Date(t.date).getTime()).sort((a, b) => a - b);
+    const earliestTimestamp = sortedDates.length > 0 ? sortedDates[0] : new Date().getTime() - (30 * 24 * 60 * 60 * 1000); // Default to 30 days ago if empty
+
+    // Start 2 days before the earliest transaction
+    const startDate = new Date(earliestTimestamp);
+    startDate.setDate(startDate.getDate() - 2);
+
     const today = new Date();
-    const chartData = Array.from({ length: 30 }, (_, i) => {
-        const d = new Date();
-        d.setDate(today.getDate() - (29 - i));
+    // Calculate number of days to show (from start date to today)
+    const dayDiff = Math.ceil((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+
+    const chartData = Array.from({ length: Math.max(dayDiff + 1, 7) }, (_, i) => { // Ensure at least 7 days
+        const d = new Date(startDate);
+        d.setDate(startDate.getDate() + i);
+
+        // If we go into the future, stop (optional, but good for "today")
+        if (d > today) return null;
+
         const dateStr = d.toISOString().split('T')[0];
         const data = groupedData[dateStr] || { income: 0, expense: 0 };
 
@@ -47,7 +61,7 @@ const Dashboard: React.FC<Props> = ({ transactions, budgets }) => {
             income: data.income,
             expense: data.expense
         };
-    });
+    }).filter(Boolean); // Filter out future nulls if any
 
     const categoryData = Object.entries(transactions.reduce((acc: Record<string, number>, t) => {
         if (t.type === TransactionType.EXPENSE) {
