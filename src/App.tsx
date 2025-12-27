@@ -226,9 +226,9 @@ const App: React.FC = () => {
         </div>
       </header>
 
-      {/* Desktop Sidebar */}
-      <aside className="hidden md:flex flex-col h-screen sticky top-0 z-40 bg-stone-100 dark:bg-stone-900 border-r-2 border-stone-200 dark:border-stone-800 transition-[width] duration-300 ease-in-out w-20 hover:w-64 group overflow-hidden shadow-xl">
-        <div className="p-6 h-20 flex items-center overflow-hidden whitespace-nowrap">
+      {/* Desktop Sidebar (Fixed Overlay) */}
+      <aside className="hidden md:flex flex-col h-screen fixed top-0 left-0 z-50 bg-stone-100 dark:bg-stone-900 border-r-2 border-stone-200 dark:border-stone-800 transition-[width] duration-300 ease-in-out w-20 hover:w-64 group overflow-hidden shadow-2xl">
+        <div className="p-6 h-20 flex items-center overflow-hidden whitespace-nowrap flex-shrink-0">
           <div className="min-w-[2.5rem] h-10 flex items-center justify-center">
             <div className="w-10 h-10 bg-stone-800 dark:bg-stone-200 text-stone-100 dark:text-stone-900 flex items-center justify-center rounded-tl-[15px] rounded-br-[25px] transform -rotate-6 shadow-sm">
               <span className="font-black text-xl font-serif">B</span>
@@ -240,14 +240,14 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        <nav className="flex-1 px-4 mt-4 space-y-2">
+        <nav className="flex-1 px-4 mt-4 space-y-2 overflow-y-auto overflow-x-hidden no-scrollbar">
           <NavItem view="dashboard" icon={LayoutDashboard} label="Pulse" />
           <NavItem view="transactions" icon={Receipt} label="Ledger" />
           <NavItem view="budgets" icon={PieChart} label="Allocations" />
           <NavItem view="advisor" icon={BrainCircuit} label="Oracle" />
         </nav>
 
-        <div className="p-4 space-y-2 border-t-2 border-stone-200 dark:border-stone-800 overflow-hidden">
+        <div className="p-4 space-y-2 border-t-2 border-stone-200 dark:border-stone-800 overflow-hidden flex-shrink-0">
           <button
             onClick={() => setShowPrivacy(true)}
             className="flex items-center h-10 px-3 text-stone-400 hover:text-stone-800 dark:hover:text-stone-200 hover:bg-stone-200 dark:hover:bg-stone-800 rounded-lg transition-colors w-full"
@@ -274,6 +274,8 @@ const App: React.FC = () => {
         </div>
       </aside>
 
+      {/* Spacer to reserve layout width for the collapsed sidebar */}
+      <div className="hidden md:block w-20 flex-shrink-0" />
 
 
       <main className="flex-1 p-4 md:p-10 pb-24 md:pb-10 overflow-y-auto h-screen bg-stone-50/50 dark:bg-stone-950">
