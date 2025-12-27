@@ -170,14 +170,21 @@ const App: React.FC = () => {
   const NavItem = ({ view, icon: Icon, label }: { view: ViewState, icon: any, label: string }) => (
     <button
       onClick={() => setCurrentView(view)}
-      className={`flex items-center gap-3 px-4 py-3 w-full text-left transition-all duration-300 rounded-r-3xl rounded-l-md mb-2
+      className={`relative flex items-center h-12 px-3 w-full text-left transition-all duration-200 rounded-xl group/item overflow-hidden whitespace-nowrap
         ${currentView === view
-          ? 'bg-stone-800 text-stone-100 dark:bg-stone-100 dark:text-stone-900 shadow-[6px_6px_0px_0px_rgba(0,0,0,0.1)] translate-x-2'
+          ? 'bg-stone-800 text-stone-100 dark:bg-stone-100 dark:text-stone-900 shadow-md'
           : 'text-stone-500 hover:bg-stone-200 dark:hover:bg-stone-800 hover:text-stone-900 dark:hover:text-stone-200'
         }`}
     >
-      <Icon size={18} strokeWidth={3} />
-      <span className="font-black text-xs uppercase tracking-widest">{label}</span>
+      <div className="min-w-[1.5rem] flex justify-center">
+        <Icon size={20} strokeWidth={currentView === view ? 3 : 2} />
+      </div>
+      <span className={`ml-4 font-black text-xs uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity duration-300 delay-75`}>
+        {label}
+      </span>
+      {currentView === view && (
+        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-current rounded-r-full group-hover:block hidden md:hidden"></div>
+      )}
     </button>
   );
 
@@ -220,43 +227,49 @@ const App: React.FC = () => {
       </header>
 
       {/* Desktop Sidebar */}
-      <aside className="hidden md:flex w-64 bg-stone-100 dark:bg-stone-900 border-r-2 border-stone-200 dark:border-stone-800 flex-col h-screen sticky top-0 z-40">
-        <div className="p-8 pb-4">
-          <h1 className="text-3xl font-black tracking-tighter text-stone-900 dark:text-stone-100 flex items-center gap-0.5">
-            <div className="w-10 h-10 bg-stone-800 dark:bg-stone-200 text-stone-100 dark:text-stone-900 flex items-center justify-center rounded-tl-[15px] rounded-br-[25px] transform -rotate-6 shadow-sm mr-1">
-              B
+      <aside className="hidden md:flex flex-col h-screen sticky top-0 z-40 bg-stone-100 dark:bg-stone-900 border-r-2 border-stone-200 dark:border-stone-800 transition-[width] duration-300 ease-in-out w-20 hover:w-64 group overflow-hidden shadow-xl">
+        <div className="p-6 h-20 flex items-center overflow-hidden whitespace-nowrap">
+          <div className="min-w-[2.5rem] h-10 flex items-center justify-center">
+            <div className="w-10 h-10 bg-stone-800 dark:bg-stone-200 text-stone-100 dark:text-stone-900 flex items-center justify-center rounded-tl-[15px] rounded-br-[25px] transform -rotate-6 shadow-sm">
+              <span className="font-black text-xl font-serif">B</span>
             </div>
-            ETA
-          </h1>
-          <p className="text-[10px] text-stone-400 mt-2 font-black uppercase tracking-widest">Budget Evaluation Tracking App</p>
+          </div>
+          <div className="ml-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300 delay-75">
+            <h1 className="text-2xl font-black tracking-tighter text-stone-900 dark:text-stone-100">ETA</h1>
+            <p className="text-[8px] text-stone-400 font-bold uppercase tracking-widest leading-tight">Budget Eval Tracking</p>
+          </div>
         </div>
 
-        <nav className="flex-1 p-4 mt-4">
+        <nav className="flex-1 px-4 mt-4 space-y-2">
           <NavItem view="dashboard" icon={LayoutDashboard} label="Pulse" />
           <NavItem view="transactions" icon={Receipt} label="Ledger" />
           <NavItem view="budgets" icon={PieChart} label="Allocations" />
           <NavItem view="advisor" icon={BrainCircuit} label="Oracle" />
         </nav>
 
-        <div className="p-6 space-y-4 border-t-2 border-stone-200 dark:border-stone-800">
+        <div className="p-4 space-y-2 border-t-2 border-stone-200 dark:border-stone-800 overflow-hidden">
           <button
             onClick={() => setShowPrivacy(true)}
-            className="flex items-center gap-3 px-4 py-1 text-stone-400 text-[10px] font-black uppercase tracking-widest hover:text-stone-800 dark:hover:text-stone-200 w-full"
+            className="flex items-center h-10 px-3 text-stone-400 hover:text-stone-800 dark:hover:text-stone-200 hover:bg-stone-200 dark:hover:bg-stone-800 rounded-lg transition-colors w-full"
           >
-            <Shield size={14} /> Privacy
+            <div className="min-w-[1.25rem] flex justify-center"><Shield size={20} /></div>
+            <span className="ml-4 text-xs font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">Privacy</span>
           </button>
+
           <button
             onClick={toggleTheme}
-            className="flex items-center gap-3 px-4 py-1 text-stone-400 text-[10px] font-black uppercase tracking-widest hover:text-stone-800 dark:hover:text-stone-200 w-full"
+            className="flex items-center h-10 px-3 text-stone-400 hover:text-stone-800 dark:hover:text-stone-200 hover:bg-stone-200 dark:hover:bg-stone-800 rounded-lg transition-colors w-full"
           >
-            {state.darkMode ? <Sun size={14} /> : <Moon size={14} />}
-            {state.darkMode ? 'Day' : 'Night'}
+            <div className="min-w-[1.25rem] flex justify-center">{state.darkMode ? <Sun size={20} /> : <Moon size={20} />}</div>
+            <span className="ml-4 text-xs font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">{state.darkMode ? 'Day Mode' : 'Night Mode'}</span>
           </button>
+
           <button
             onClick={() => supabase.auth.signOut()}
-            className="flex items-center gap-3 px-4 py-1 text-red-400 text-[10px] font-black uppercase tracking-widest hover:text-red-600 w-full"
+            className="flex items-center h-10 px-3 text-stone-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors w-full group/logout"
           >
-            <Shield size={14} /> Sign Out
+            <div className="min-w-[1.25rem] flex justify-center"><Shield size={20} className="group-hover/logout:rotate-12 transition-transform" /></div>
+            <span className="ml-4 text-xs font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap group-hover/logout:text-red-600">Sign Out</span>
           </button>
         </div>
       </aside>
