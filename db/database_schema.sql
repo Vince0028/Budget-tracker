@@ -28,6 +28,7 @@ create table transactions (
   description text,
   is_recurring boolean default false,
   receipt_data text,
+  order_index integer default 0,
   created_at timestamp with time zone default timezone('utc'::text, now())
 );
 

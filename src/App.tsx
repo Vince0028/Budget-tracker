@@ -47,7 +47,7 @@ const App: React.FC = () => {
         return;
       }
 
-      const { data: transactions } = await supabase.from('transactions').select('*').order('date', { ascending: false });
+      const { data: transactions } = await supabase.from('transactions').select('*').order('date', { ascending: false }).order('order_index', { ascending: true });
       const { data: budgets } = await supabase.from('budgets').select('*');
       const { data: profile } = await supabase.from('user_profiles').select('*').eq('id', user.id).single();
 
@@ -89,18 +89,23 @@ const App: React.FC = () => {
     if (user) {
       const { error } = await supabase.from('transactions').upsert({
         ...t,
-        user_id: user.id
+        user_id: user.id,
+        order_index: 0 // New transactions at top
       });
       if (error) console.error("Error saving transaction:", error);
       else {
         setState(prev => {
           const exists = prev.transactions.some(existing => existing.id === t.id);
           let newTransactions = exists
-            ? prev.transactions.map(existing => existing.id === t.id ? t : existing)
-            : [...prev.transactions, t];
+            ? prev.transactions.map(existing => existing.id === t.id ? { ...t, order_index: existing.order_index } : existing)
+            : [...prev.transactions, { ...t, order_index: 0 }];
 
-          // Sort transactions by date descending
-          newTransactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+          // Sort transactions by date descending, then order_index ascending
+          newTransactions.sort((a, b) => {
+            const dateDiff = new Date(b.date).getTime() - new Date(a.date).getTime();
+            if (dateDiff !== 0) return dateDiff;
+            return (a.order_index || 0) - (b.order_index || 0);
+          });
 
           return {
             ...prev,
@@ -115,6 +120,34 @@ const App: React.FC = () => {
     const { error } = await supabase.from('transactions').delete().eq('id', id);
     if (error) console.error("Error deleting transaction:", error);
     else setState(prev => ({ ...prev, transactions: prev.transactions.filter(t => t.id !== id) }));
+  };
+
+  const handleReorder = async (newTransactions: Transaction[]) => {
+    // 1. Optimistic Update
+    setState(prev => ({ ...prev, transactions: newTransactions }));
+
+    // 2. Identify dirty items (order changed)
+    // We compare the new index in the array against the existing property 'order_index'
+    const updates = newTransactions.map((t, index) => ({ id: t.id, order_index: index }))
+      // Only update if the index is actually different from what we had
+      // (Note: we check against the prop value, assuming the passed 'newTransactions' hasn't had props updated yet, just array position)
+      .filter((u) => {
+        const original = state.transactions.find(t => t.id === u.id);
+        return original && original.order_index !== u.order_index;
+      });
+
+    if (updates.length === 0) return;
+
+    // 3. Persist modifications
+    // Using Promise.all for parallel updates. For small lists this is fine.
+    try {
+      await Promise.all(updates.map(u =>
+        supabase.from('transactions').update({ order_index: u.order_index }).eq('id', u.id)
+      ));
+    } catch (err) {
+      console.error("Failed to persist reorder:", err);
+      // Ideally revert optimistic update here, but for now we let it slide or refresh on next load
+    }
   };
 
   const updateBudgets = async (budgets: Budget[]) => {
@@ -227,7 +260,7 @@ const App: React.FC = () => {
       <main className="flex-1 p-4 md:p-10 pb-24 md:pb-10 overflow-y-auto h-screen bg-stone-50/50 dark:bg-stone-950">
         <div className="max-w-6xl mx-auto animate-in fade-in slide-in-from-bottom-2 duration-700">
           {currentView === 'dashboard' && <Dashboard transactions={state.transactions} budgets={state.budgets} />}
-          {currentView === 'transactions' && <Transactions transactions={state.transactions} budgets={state.budgets} onAdd={addTransaction} onDelete={deleteTransaction} onReorder={(t) => setState(prev => ({ ...prev, transactions: t }))} />}
+          {currentView === 'transactions' && <Transactions transactions={state.transactions} budgets={state.budgets} onAdd={addTransaction} onDelete={deleteTransaction} onReorder={handleReorder} />}
           {currentView === 'budgets' && <Budgets budgets={state.budgets} transactions={state.transactions} onUpdateBudgets={updateBudgets} />}
           {currentView === 'advisor' && <SmartAdvisor transactions={state.transactions} budgets={state.budgets} />}
         </div>

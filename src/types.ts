@@ -14,6 +14,7 @@ export interface Transaction {
   description?: string;
   isRecurring?: boolean;
   receiptData?: string;
+  order_index?: number;
 }
 
 export interface Budget {
