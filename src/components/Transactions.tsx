@@ -33,33 +33,39 @@ const SortableTransactionRow = ({ transaction, onEdit, onDelete }: { transaction
     <div ref={setNodeRef} style={style} className="group bg-white dark:bg-stone-900 p-4 border-b-2 border-stone-100 dark:border-stone-800 hover:bg-stone-50 dark:hover:bg-stone-800/50 transition-colors flex justify-between items-center rounded-sm select-none" {...attributes} {...listeners}>
       {/* Visual grip handle, always visible but subtle */}
       {/* Grip handle removed to save space on mobile and prevent horizontal overflow */}
-      <div className="flex items-center gap-2 md:gap-4 min-w-0 flex-1">
+      <div
+        className="flex items-center gap-2 md:gap-4 flex-1 min-w-0 cursor-pointer"
+        onClick={onEdit}
+      >
         <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex-shrink-0 flex items-center justify-center text-sm md:text-lg font-bold ${transaction.type === TransactionType.INCOME ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-stone-200 text-stone-600 dark:bg-stone-800 dark:text-stone-400'}`}>
           {transaction.vendor.charAt(0).toUpperCase()}
         </div>
-        <div className="min-w-0 flex-1">
-          <h4 className="font-bold text-stone-800 dark:text-stone-200 text-sm md:text-base truncate">{transaction.vendor}</h4>
+        <div className="min-w-0 flex-1 py-1">
+          <h4 className="font-bold text-stone-800 dark:text-stone-200 text-sm md:text-base line-clamp-2 leading-tight break-words">{transaction.vendor}</h4>
           <div className="flex gap-2 text-xs text-stone-500">
             <span className="truncate">{transaction.category}</span>
           </div>
         </div>
       </div>
-      <div className="flex items-center gap-2 md:gap-4">
-        <span className={`font-mono font-bold text-sm md:text-lg ${transaction.type === TransactionType.INCOME ? 'text-green-600 dark:text-green-400' : 'text-stone-800 dark:text-stone-200'}`}>
+      <div className="flex items-center gap-2 md:gap-4 pl-2 shrink-0">
+        <span className={`font-mono font-bold text-sm md:text-lg whitespace-nowrap ${transaction.type === TransactionType.INCOME ? 'text-green-600 dark:text-green-400' : 'text-stone-800 dark:text-stone-200'}`}>
           {transaction.type === TransactionType.INCOME ? '+' : '-'}₱{transaction.amount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </span>
-        <button
-          onClick={onEdit}
-          className="opacity-0 group-hover:opacity-100 p-1 md:p-2 text-stone-400 hover:text-stone-700 dark:hover:text-stone-300 transition-opacity"
-        >
-          <Pencil size={16} />
-        </button>
-        <button
-          onClick={onDelete}
-          className="opacity-0 group-hover:opacity-100 p-1 md:p-2 text-red-400 hover:text-red-600 transition-opacity"
-        >
-          <Trash2 size={16} />
-        </button>
+        {/* Buttons visible on mobile, no hover needed. Compressed usage. */}
+        <div className="flex gap-1">
+          <button
+            onClick={(e) => { e.stopPropagation(); onEdit(); }}
+            className="p-1.5 md:p-2 text-stone-400 hover:text-stone-700 dark:hover:text-stone-300 transition-colors"
+          >
+            <Pencil size={18} className="w-4 h-4 md:w-5 md:h-5" />
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onDelete(); }}
+            className="p-1.5 md:p-2 text-red-300 hover:text-red-500 transition-colors"
+          >
+            <Trash2 size={18} className="w-4 h-4 md:w-5 md:h-5" />
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -310,10 +316,27 @@ const Transactions: React.FC<Props> = ({ transactions, budgets, onAdd, onDelete,
                 />
               </div>
             )}
-            <div className="md:col-span-2 flex justify-end mt-2 gap-2">
-              <QButton type="button" variant="ghost" onClick={() => setIsAdding(false)}>Cancel</QButton>
-              <QButton type="submit">{editingId ? 'Update Transaction' : 'Save Transaction'}</QButton>
-            </div>
+            {editingId && (
+              <div className="md:col-span-2 flex justify-between mt-2 pt-2 border-t border-stone-200 dark:border-stone-700">
+                <button
+                  type="button"
+                  onClick={() => setConfirmState({ type: 'delete', id: editingId })}
+                  className="px-4 py-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg text-sm font-bold transition-colors flex items-center gap-2"
+                >
+                  <Trash2 size={16} /> Delete
+                </button>
+                <div className="flex gap-2">
+                  <QButton type="button" variant="ghost" onClick={() => { setIsAdding(false); setEditingId(null); }}>Cancel</QButton>
+                  <QButton type="submit">Update Transaction</QButton>
+                </div>
+              </div>
+            )}
+            {!editingId && (
+              <div className="md:col-span-2 flex justify-end mt-2 gap-2">
+                <QButton type="button" variant="ghost" onClick={() => setIsAdding(false)}>Cancel</QButton>
+                <QButton type="submit">Save Transaction</QButton>
+              </div>
+            )}
           </form>
         </QCard>
       )}
