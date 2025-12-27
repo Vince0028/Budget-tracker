@@ -26,41 +26,39 @@ const SortableTransactionRow = ({ transaction, onEdit, onDelete }: { transaction
     zIndex: isDragging ? 20 : 'auto',
     opacity: isDragging ? 0.8 : 1,
     position: 'relative' as 'relative', // Explicit cast
-    touchAction: 'none',
+    touchAction: 'pan-y',
   };
 
   return (
     <div ref={setNodeRef} style={style} className="group bg-white dark:bg-stone-900 p-4 border-b-2 border-stone-100 dark:border-stone-800 hover:bg-stone-50 dark:hover:bg-stone-800/50 transition-colors flex justify-between items-center rounded-sm select-none" {...attributes} {...listeners}>
       {/* Visual grip handle, always visible but subtle */}
-      <div className="absolute left-1 top-1/2 -translate-y-1/2 text-stone-200 dark:text-stone-700">
-        <GripVertical size={16} />
-      </div>
-      <div className="flex items-center gap-4 pl-4">
-        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold ${transaction.type === TransactionType.INCOME ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-stone-200 text-stone-600 dark:bg-stone-800 dark:text-stone-400'}`}>
+      {/* Grip handle removed to save space on mobile and prevent horizontal overflow */}
+      <div className="flex items-center gap-2 md:gap-4 min-w-0 flex-1">
+        <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex-shrink-0 flex items-center justify-center text-sm md:text-lg font-bold ${transaction.type === TransactionType.INCOME ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-stone-200 text-stone-600 dark:bg-stone-800 dark:text-stone-400'}`}>
           {transaction.vendor.charAt(0).toUpperCase()}
         </div>
-        <div>
-          <h4 className="font-bold text-stone-800 dark:text-stone-200">{transaction.vendor}</h4>
+        <div className="min-w-0 flex-1">
+          <h4 className="font-bold text-stone-800 dark:text-stone-200 text-sm md:text-base truncate">{transaction.vendor}</h4>
           <div className="flex gap-2 text-xs text-stone-500">
-            <span>{transaction.category}</span>
+            <span className="truncate">{transaction.category}</span>
           </div>
         </div>
       </div>
-      <div className="flex items-center gap-4">
-        <span className={`font-mono font-bold text-lg ${transaction.type === TransactionType.INCOME ? 'text-green-600 dark:text-green-400' : 'text-stone-800 dark:text-stone-200'}`}>
+      <div className="flex items-center gap-2 md:gap-4">
+        <span className={`font-mono font-bold text-sm md:text-lg ${transaction.type === TransactionType.INCOME ? 'text-green-600 dark:text-green-400' : 'text-stone-800 dark:text-stone-200'}`}>
           {transaction.type === TransactionType.INCOME ? '+' : '-'}₱{transaction.amount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </span>
         <button
           onClick={onEdit}
-          className="opacity-0 group-hover:opacity-100 p-2 text-stone-400 hover:text-stone-700 dark:hover:text-stone-300 transition-opacity"
+          className="opacity-0 group-hover:opacity-100 p-1 md:p-2 text-stone-400 hover:text-stone-700 dark:hover:text-stone-300 transition-opacity"
         >
-          <Pencil size={18} />
+          <Pencil size={16} />
         </button>
         <button
           onClick={onDelete}
-          className="opacity-0 group-hover:opacity-100 p-2 text-red-400 hover:text-red-600 transition-opacity"
+          className="opacity-0 group-hover:opacity-100 p-1 md:p-2 text-red-400 hover:text-red-600 transition-opacity"
         >
-          <Trash2 size={18} />
+          <Trash2 size={16} />
         </button>
       </div>
     </div>

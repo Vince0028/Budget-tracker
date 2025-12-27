@@ -22,7 +22,7 @@ const SortableBudgetCard = ({ budget, children }: { budget: Budget, children: Re
         transition,
         zIndex: isDragging ? 20 : 'auto', // Higher z-index while dragging
         opacity: isDragging ? 0.8 : 1,
-        touchAction: 'none', // Critical for touch dragging
+        touchAction: 'pan-y', // Allow vertical scrolling, sensor waits for hold
     };
 
     return (
