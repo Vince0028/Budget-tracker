@@ -4,7 +4,7 @@ import { Budget, Transaction, TransactionType, EXPENSE_CATEGORIES, THEME_COLORS 
 import { QButton, QInput, QSelect, QCard } from './UI/QuirkyComponents';
 import ConfirmModal from './ConfirmModal';
 import { Trash2, AlertTriangle, Coins, PlusCircle, Pencil, GripVertical } from 'lucide-react';
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { DndContext, closestCenter, KeyboardSensor, MouseSensor, TouchSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, rectSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
@@ -120,8 +120,8 @@ const Budgets: React.FC<Props> = ({ budgets, transactions, onUpdateBudgets }) =>
     };
 
     const sensors = useSensors(
-        useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-        useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }), // 250ms press and hold
+        useSensor(MouseSensor, { activationConstraint: { distance: 10 } }),
+        useSensor(TouchSensor, { activationConstraint: { delay: 500, tolerance: 5 } }), // 500ms press and hold, strict tolerance to prevent scroll-drag
         useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
     );
 

@@ -5,7 +5,7 @@ import { QButton, QInput, QSelect, QCard, QBadge } from './UI/QuirkyComponents';
 import ConfirmModal from './ConfirmModal';
 import { Trash2, Plus, Upload, Search, FileText, AlertCircle, Pencil, GripVertical } from 'lucide-react';
 import { parseReceiptImage } from '../services/geminiService';
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { DndContext, closestCenter, KeyboardSensor, MouseSensor, TouchSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
@@ -183,8 +183,8 @@ const Transactions: React.FC<Props> = ({ transactions, budgets, onAdd, onDelete,
   const sortedDates = Object.keys(groupedTransactions).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 10 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 500, tolerance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
