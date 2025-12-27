@@ -4,7 +4,7 @@ import { Budget, Transaction, TransactionType, EXPENSE_CATEGORIES, THEME_COLORS 
 import { QButton, QInput, QSelect, QCard } from './UI/QuirkyComponents';
 import ConfirmModal from './ConfirmModal';
 import { Trash2, AlertTriangle, Coins, PlusCircle, Pencil, GripVertical } from 'lucide-react';
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, rectSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
@@ -28,16 +28,15 @@ const SortableBudgetCard = ({ budget, children }: { budget: Budget, children: Re
     const style = {
         transform: CSS.Transform.toString(transform),
         transition,
-        zIndex: isDragging ? 10 : 'auto',
-        opacity: isDragging ? 0.5 : 1,
+        zIndex: isDragging ? 20 : 'auto', // Higher z-index while dragging
+        opacity: isDragging ? 0.8 : 1,
+        touchAction: 'none', // Critical for touch dragging
     };
 
     return (
-        <div ref={setNodeRef} style={style} className="h-full relative">
-            {/* The whole card could be draggable, but let's use a handle for precision if requested.
-                User said "hold the card", implying the whole card or a handle.
-                Let's make the grip handle specific. */}
-            <div className="absolute top-6 left-5 z-20 cursor-grab active:cursor-grabbing text-stone-300 hover:text-stone-500" {...attributes} {...listeners}>
+        <div ref={setNodeRef} style={style} className="h-full relative select-none" {...attributes} {...listeners}>
+            {/* Grip handle as a visual hint, but interaction is now on the whole card via listeners above */}
+            <div className="absolute top-6 left-5 z-20 text-stone-200 dark:text-stone-700">
                 <GripVertical size={20} />
             </div>
             {children}
@@ -130,6 +129,7 @@ const Budgets: React.FC<Props> = ({ budgets, transactions, onUpdateBudgets }) =>
 
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+        useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }), // 250ms press and hold
         useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
     );
 

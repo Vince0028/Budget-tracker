@@ -5,7 +5,7 @@ import { QButton, QInput, QSelect, QCard, QBadge } from './UI/QuirkyComponents';
 import ConfirmModal from './ConfirmModal';
 import { Trash2, Plus, Upload, Search, FileText, AlertCircle, Pencil, GripVertical } from 'lucide-react';
 import { parseReceiptImage } from '../services/geminiService';
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
@@ -23,14 +23,16 @@ const SortableTransactionRow = ({ transaction, onEdit, onDelete }: { transaction
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    zIndex: isDragging ? 10 : 'auto',
-    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 20 : 'auto',
+    opacity: isDragging ? 0.8 : 1,
     position: 'relative' as 'relative', // Explicit cast
+    touchAction: 'none',
   };
 
   return (
-    <div ref={setNodeRef} style={style} className="group bg-white dark:bg-stone-900 p-4 border-b-2 border-stone-100 dark:border-stone-800 hover:bg-stone-50 dark:hover:bg-stone-800/50 transition-colors flex justify-between items-center rounded-sm">
-      <div className="absolute left-1 top-1/2 -translate-y-1/2 cursor-grab active:cursor-grabbing text-stone-200 hover:text-stone-400 opacity-0 group-hover:opacity-100 transition-opacity" {...attributes} {...listeners}>
+    <div ref={setNodeRef} style={style} className="group bg-white dark:bg-stone-900 p-4 border-b-2 border-stone-100 dark:border-stone-800 hover:bg-stone-50 dark:hover:bg-stone-800/50 transition-colors flex justify-between items-center rounded-sm select-none" {...attributes} {...listeners}>
+      {/* Visual grip handle, always visible but subtle */}
+      <div className="absolute left-1 top-1/2 -translate-y-1/2 text-stone-200 dark:text-stone-700">
         <GripVertical size={16} />
       </div>
       <div className="flex items-center gap-4 pl-4">
@@ -182,6 +184,7 @@ const Transactions: React.FC<Props> = ({ transactions, budgets, onAdd, onDelete,
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
