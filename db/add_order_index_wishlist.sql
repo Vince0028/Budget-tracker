@@ -1,0 +1,1 @@
+ALTER TABLE wishlist_items ADD COLUMN IF NOT EXISTS order_index INTEGER DEFAULT 0;

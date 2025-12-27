@@ -14,35 +14,39 @@ interface Props {
   budgets: Budget[];
   onAdd: (t: Transaction) => void;
   onDelete: (id: string) => void;
-  onReorder?: (transactions: Transaction[]) => void;
+  onReorder: (transactions: Transaction[]) => void;
+  pendingDeletes: Record<string, number>;
+  onUndoDelete: (id: string) => void;
 }
 
-const SortableTransactionRow = ({ transaction, onEdit, onDelete, isPendingDelete, onUndo }: { transaction: Transaction, onEdit: () => void, onDelete: () => void, isPendingDelete?: boolean, onUndo?: () => void }) => {
+const SortableTransactionRow = ({ transaction, onEdit, onDelete, deleteDeadline, onUndo }: { transaction: Transaction, onEdit: () => void, onDelete: () => void, deleteDeadline?: number, onUndo?: () => void }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: transaction.id });
-  const [timeLeft, setTimeLeft] = useState(20);
+
+  const isPendingDelete = !!deleteDeadline;
+  const [timeLeft, setTimeLeft] = useState(0);
 
   useEffect(() => {
-    if (isPendingDelete) {
-      setTimeLeft(20);
+    if (deleteDeadline) {
+      const updateTimer = () => {
+        const remaining = Math.max(0, Math.ceil((deleteDeadline - Date.now()) / 1000));
+        setTimeLeft(remaining);
+        return remaining;
+      };
+
+      updateTimer(); // Initial calculation
       const timer = setInterval(() => {
-        setTimeLeft((prev) => {
-          if (prev <= 1) {
-            clearInterval(timer);
-            return 0;
-          }
-          return prev - 1;
-        });
+        if (updateTimer() <= 0) clearInterval(timer);
       }, 1000);
       return () => clearInterval(timer);
     }
-  }, [isPendingDelete]);
+  }, [deleteDeadline]);
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
     zIndex: isDragging ? 20 : 'auto',
     opacity: isDragging ? 0.8 : 1,
-    position: 'relative' as 'relative', // Explicit cast
+    position: 'relative' as 'relative',
     touchAction: 'pan-y',
   };
 
@@ -52,7 +56,10 @@ const SortableTransactionRow = ({ transaction, onEdit, onDelete, isPendingDelete
         <div className="flex items-center gap-4 flex-1">
           <span className="italic text-stone-500 font-medium text-sm">Deleting in {timeLeft}s...</span>
           <div className="flex-1 h-1 bg-stone-200 dark:bg-stone-800 rounded-full overflow-hidden">
-            <div className="h-full bg-stone-400 animate-[width_20s_linear_forwards] w-full origin-left transform -scale-x-100"></div>
+            <div
+              className="h-full bg-stone-400 w-full origin-left transform -scale-x-100 transition-transform duration-1000 ease-linear"
+              style={{ transform: `translateX(-${(1 - timeLeft / 20) * 100}%)` }} // Simple visual regression
+            ></div>
           </div>
         </div>
         <button
@@ -67,8 +74,6 @@ const SortableTransactionRow = ({ transaction, onEdit, onDelete, isPendingDelete
 
   return (
     <div ref={setNodeRef} style={style} className="group bg-white dark:bg-stone-900 p-4 border-b-2 border-stone-100 dark:border-stone-800 hover:bg-stone-50 dark:hover:bg-stone-800/50 transition-colors flex justify-between items-center rounded-sm select-none" {...attributes} {...listeners}>
-      {/* Visual grip handle, always visible but subtle */}
-      {/* Grip handle removed to save space on mobile and prevent horizontal overflow */}
       <div
         className="flex items-center gap-2 md:gap-4 flex-1 min-w-0 cursor-pointer"
         onClick={onEdit}
@@ -87,7 +92,6 @@ const SortableTransactionRow = ({ transaction, onEdit, onDelete, isPendingDelete
         <span className={`font-mono font-bold text-sm md:text-lg whitespace-nowrap ${transaction.type === TransactionType.INCOME ? 'text-green-600 dark:text-green-400' : 'text-stone-800 dark:text-stone-200'}`}>
           {transaction.type === TransactionType.INCOME ? '+' : '-'}₱{transaction.amount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </span>
-        {/* Buttons visible on mobile, no hover needed. Compressed usage. */}
         <div className="flex gap-1">
           <button
             onClick={(e) => { e.stopPropagation(); onEdit(); }}
@@ -107,63 +111,15 @@ const SortableTransactionRow = ({ transaction, onEdit, onDelete, isPendingDelete
   );
 };
 
-const Transactions: React.FC<Props> = ({ transactions, budgets, onAdd, onDelete, onReorder }) => {
+const Transactions: React.FC<Props> = ({ transactions, budgets, onAdd, onDelete, onReorder, pendingDeletes, onUndoDelete }) => {
   const [filter, setFilter] = useState('');
   const [isAdding, setIsAdding] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [confirmState, setConfirmState] = useState<{ type: 'delete' | 'edit' | null; id: string | null; data?: Transaction }>({ type: null, id: null });
 
-  const [pendingDeletes, setPendingDeletes] = useState<Set<string>>(new Set());
-  const deleteTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  // Removed local delete logic (pendingDeletes, deleteTimers, useEffect, queueDelete, commitDelete, undoDelete) defined here
 
-  useEffect(() => {
-    return () => {
-      // Commit all pending deletes on unmount
-      Object.entries(deleteTimers.current).forEach(([id, timer]) => {
-        clearTimeout(timer);
-        onDelete(id);
-      });
-    };
-  }, [onDelete]);
-
-  const queueDelete = (id: string) => {
-    setPendingDeletes(prev => {
-      const next = new Set(prev);
-      next.add(id);
-      return next;
-    });
-
-    deleteTimers.current[id] = setTimeout(() => {
-      commitDelete(id);
-    }, 20000); // 20 seconds
-  };
-
-  const commitDelete = (id: string) => {
-    onDelete(id);
-    setPendingDeletes(prev => {
-      const next = new Set(prev);
-      next.delete(id);
-      return next;
-    });
-    const newTimers = { ...deleteTimers.current };
-    delete newTimers[id];
-    deleteTimers.current = newTimers;
-  };
-
-  const undoDelete = (id: string) => {
-    if (deleteTimers.current[id]) {
-      clearTimeout(deleteTimers.current[id]);
-      const newTimers = { ...deleteTimers.current };
-      delete newTimers[id];
-      deleteTimers.current = newTimers;
-    }
-    setPendingDeletes(prev => {
-      const next = new Set(prev);
-      next.delete(id);
-      return next;
-    });
-  };
 
   const [newTrans, setNewTrans] = useState<Partial<Transaction>>({
     type: TransactionType.EXPENSE,
@@ -249,7 +205,7 @@ const Transactions: React.FC<Props> = ({ transactions, budgets, onAdd, onDelete,
 
   const handleConfirmAction = () => {
     if (confirmState.type === 'delete' && confirmState.id) {
-      queueDelete(confirmState.id);
+      onDelete(confirmState.id);
     } else if (confirmState.type === 'edit' && confirmState.data) {
       proceedWithEdit(confirmState.data);
     }
@@ -458,8 +414,8 @@ const Transactions: React.FC<Props> = ({ transactions, budgets, onAdd, onDelete,
                       <SortableTransactionRow
                         key={t.id}
                         transaction={t}
-                        isPendingDelete={pendingDeletes.has(t.id)}
-                        onUndo={() => undoDelete(t.id)}
+                        deleteDeadline={pendingDeletes[t.id]}
+                        onUndo={() => onUndoDelete(t.id)}
                         onEdit={() => handleEditClick(t)}
                         onDelete={() => setConfirmState({ type: 'delete', id: t.id })}
                       />

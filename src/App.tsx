@@ -1,15 +1,16 @@
 
 import React, { useState, useEffect } from 'react';
-import { AppState, ViewState, Transaction, Budget, UserProfile, CATEGORIES, THEME_COLORS } from './types';
+import { AppState, ViewState, Transaction, Budget, UserProfile, CATEGORIES, THEME_COLORS, WishlistItem, TransactionType } from './types';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from './services/supabaseClient';
 import Auth from './components/Auth';
 import Dashboard from './components/Dashboard';
 import Transactions from './components/Transactions';
 import Budgets from './components/Budgets';
+import Wishlist from './components/Wishlist';
 import SmartAdvisor from './components/SmartAdvisor';
 import { QButton } from './components/UI/QuirkyComponents';
-import { LayoutDashboard, Receipt, PieChart, BrainCircuit, Moon, Sun, Shield } from 'lucide-react';
+import { LayoutDashboard, Receipt, PieChart, BrainCircuit, Moon, Sun, Shield, Gift } from 'lucide-react';
 
 const PrivacyModal: React.FC<{ onClose: () => void }> = ({ onClose }) => (
   <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
@@ -33,6 +34,7 @@ const App: React.FC = () => {
   const [state, setState] = useState<AppState>({
     transactions: [],
     budgets: [],
+    wishlist: [],
     user: { name: 'Guest', email: '', currency: 'PHP' },
     darkMode: false,
   });
@@ -40,39 +42,118 @@ const App: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        // For now, if no user, we can't fetch personalized data. 
-        // We could implement a simple anonymous sign-in here if needed.
-        console.log("No user signed in");
-        return;
-      }
+      if (!user) return;
 
       const { data: transactions } = await supabase.from('transactions').select('*').order('date', { ascending: false }).order('order_index', { ascending: true });
       const { data: budgets } = await supabase.from('budgets').select('*');
+      const { data: wishlist } = await supabase.from('wishlist_items').select('*');
       const { data: profile } = await supabase.from('user_profiles').select('*').eq('id', user.id).single();
 
       setState(prev => ({
         ...prev,
         transactions: transactions as Transaction[] || [],
         budgets: budgets as Budget[] || [],
+        wishlist: wishlist as WishlistItem[] || [],
         user: profile ? { name: profile.name, email: profile.email, currency: profile.currency } : prev.user
       }));
-
     };
-
+    /* ... (rest of useEffect logic remains same, just ensuring fetch includes wishlist) ... */
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       if (session) fetchData();
     });
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       if (session) fetchData();
-      else setState(prev => ({ ...prev, transactions: [], budgets: [] }));
+      else setState(prev => ({ ...prev, transactions: [], budgets: [], wishlist: [] }));
     });
-
     return () => subscription.unsubscribe();
   }, []);
+
+  /* ... theme logic ... */
+
+  const addWishlist = async (item: WishlistItem) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { error } = await supabase.from('wishlist_items').upsert({
+        ...item,
+        user_id: user.id
+      });
+      if (error) console.error(error);
+      else setState(prev => ({ ...prev, wishlist: [...prev.wishlist, item] }));
+    }
+  };
+
+
+
+  const updateWishlist = async (items: WishlistItem[]) => {
+    // Optimistic update
+    setState(prev => ({ ...prev, wishlist: items }));
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    // Prepare updates with order_index
+    // Since we just added the column, we can update it.
+    // Upserting the whole list is heaviest but easiest given no order_id unique constraint issues usually
+    const itemsWithUser = items.map((item, index) => ({
+      ...item,
+      user_id: user.id,
+      order_index: index
+    }));
+
+    const { error } = await supabase.from('wishlist_items').upsert(itemsWithUser);
+    if (error) console.error("Error updating wishlist order:", error);
+  };
+
+  const promoteToBudget = async (item: WishlistItem) => {
+    // 1. Create a Budget from Wishlist Item
+    const newBudget: Budget = {
+      id: crypto.randomUUID(),
+      category: item.name,
+      limit: item.amount,
+      color: '#78716c', // Default color (Stone)
+    };
+
+    // Upsert budget
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { error } = await supabase.from('budgets').insert({ ...newBudget, user_id: user.id });
+
+      if (!error) {
+        // 2. Remove from Wishlist
+        await commitDeleteWishlist(item.id);
+        // 3. Update local state
+        setState(prev => ({
+          ...prev,
+          budgets: [...prev.budgets, newBudget]
+        }));
+        // 4. Switch view to budgets to see it
+        setCurrentView('budgets');
+      } else {
+        console.error("Failed to promote:", error);
+      }
+    }
+  };
+
+  /* ... transaction/budget handlers ... */
+
+  // Calculate Unallocated for Wishlist View
+  const income = state.transactions
+    .filter(t => t.type === TransactionType.INCOME)
+    .reduce((acc, t) => acc + t.amount, 0);
+  const totalAllocated = state.budgets.reduce((acc, b) => acc + b.limit, 0);
+  const unallocated = income - totalAllocated;
+
+  /* ... NavItem definitions ... */
+
+  // In the sidebar nav:
+  // <NavItem view="wishlist" icon={Gift} label="Wishlist" /> 
+  // (I will inject this in the replacement block below)
+
+  // In the main render:
+  // {currentView === 'wishlist' && <Wishlist wishlist={state.wishlist} unallocatedCash={unallocated} onAdd={addWishlist} onDelete={deleteWishlist} onPromote={promoteToBudget} />}
+
 
   useEffect(() => {
     if (state.darkMode) {
@@ -116,10 +197,93 @@ const App: React.FC = () => {
     }
   };
 
-  const deleteTransaction = async (id: string) => {
+  // --- Global Delete Queues ---
+
+  // 1. Budgets
+  const [pendingBudgetDeletes, setPendingBudgetDeletes] = useState<Record<string, number>>({});
+  const budgetDeleteTimers = React.useRef<Record<string, NodeJS.Timeout>>({});
+
+  const queueDeleteBudget = (id: string) => {
+    const deadline = Date.now() + 20000;
+    setPendingBudgetDeletes(prev => ({ ...prev, [id]: deadline }));
+    if (budgetDeleteTimers.current[id]) clearTimeout(budgetDeleteTimers.current[id]);
+    budgetDeleteTimers.current[id] = setTimeout(() => commitDeleteBudget(id), 20000);
+  };
+
+  const undoDeleteBudget = (id: string) => {
+    if (budgetDeleteTimers.current[id]) {
+      clearTimeout(budgetDeleteTimers.current[id]);
+      delete budgetDeleteTimers.current[id];
+    }
+    setPendingBudgetDeletes(prev => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  };
+
+  const commitDeleteBudget = async (id: string) => {
+    const { error } = await supabase.from('budgets').delete().eq('id', id);
+    if (!error) setState(prev => ({ ...prev, budgets: prev.budgets.filter(b => b.id !== id) }));
+    undoDeleteBudget(id); // Cleanup state
+  };
+
+  // 2. Transactions
+  const [pendingTransactionDeletes, setPendingTransactionDeletes] = useState<Record<string, number>>({});
+  const transactionDeleteTimers = React.useRef<Record<string, NodeJS.Timeout>>({});
+
+  const queueDeleteTransaction = (id: string) => {
+    const deadline = Date.now() + 20000;
+    setPendingTransactionDeletes(prev => ({ ...prev, [id]: deadline }));
+    if (transactionDeleteTimers.current[id]) clearTimeout(transactionDeleteTimers.current[id]);
+    transactionDeleteTimers.current[id] = setTimeout(() => commitDeleteTransaction(id), 20000);
+  };
+
+  const undoDeleteTransaction = (id: string) => {
+    if (transactionDeleteTimers.current[id]) {
+      clearTimeout(transactionDeleteTimers.current[id]);
+      delete transactionDeleteTimers.current[id];
+    }
+    setPendingTransactionDeletes(prev => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  };
+
+  const commitDeleteTransaction = async (id: string) => {
     const { error } = await supabase.from('transactions').delete().eq('id', id);
-    if (error) console.error("Error deleting transaction:", error);
-    else setState(prev => ({ ...prev, transactions: prev.transactions.filter(t => t.id !== id) }));
+    if (!error) setState(prev => ({ ...prev, transactions: prev.transactions.filter(t => t.id !== id) }));
+    undoDeleteTransaction(id); // Cleanup state
+  };
+
+  // 3. Wishlist
+  const [pendingWishlistDeletes, setPendingWishlistDeletes] = useState<Record<string, number>>({});
+  const wishlistDeleteTimers = React.useRef<Record<string, NodeJS.Timeout>>({});
+
+  const queueDeleteWishlist = (id: string) => {
+    const deadline = Date.now() + 20000;
+    setPendingWishlistDeletes(prev => ({ ...prev, [id]: deadline }));
+    if (wishlistDeleteTimers.current[id]) clearTimeout(wishlistDeleteTimers.current[id]);
+    wishlistDeleteTimers.current[id] = setTimeout(() => commitDeleteWishlist(id), 20000);
+  };
+
+  const undoDeleteWishlist = (id: string) => {
+    if (wishlistDeleteTimers.current[id]) {
+      clearTimeout(wishlistDeleteTimers.current[id]);
+      delete wishlistDeleteTimers.current[id];
+    }
+    setPendingWishlistDeletes(prev => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  };
+
+  const commitDeleteWishlist = async (id: string) => {
+    const { error } = await supabase.from('wishlist_items').delete().eq('id', id);
+    if (!error) setState(prev => ({ ...prev, wishlist: prev.wishlist.filter(i => i.id !== id) }));
+    undoDeleteWishlist(id); // Cleanup state
   };
 
   const handleReorder = async (newTransactions: Transaction[]) => {
@@ -161,11 +325,11 @@ const App: React.FC = () => {
     }
   };
 
-  const deleteBudget = async (id: string) => {
-    const { error } = await supabase.from('budgets').delete().eq('id', id);
-    if (error) console.error("Error deleting budget:", error);
-    else setState(prev => ({ ...prev, budgets: prev.budgets.filter(b => b.id !== id) }));
-  };
+
+
+  // Keep the original deleteBudget for immediate deletions if needed, but rename or remove
+  // We will force Budgets.tsx to use queueDeleteBudget
+
 
   const NavItem = ({ view, icon: Icon, label }: { view: ViewState, icon: any, label: string }) => (
     <button
@@ -216,11 +380,20 @@ const App: React.FC = () => {
           </div>
           <span className="font-black text-xl tracking-tighter text-stone-900 dark:text-stone-100">ETA</span>
         </div>
-        <div className="flex items-center gap-2">
-          <button onClick={toggleTheme} className="p-2 text-stone-500">
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setShowPrivacy(true)}
+            className="p-2 text-stone-500 hover:bg-stone-100 rounded-lg"
+          >
+            <Shield size={20} />
+          </button>
+          <button onClick={toggleTheme} className="p-2 text-stone-500 hover:bg-stone-100 rounded-lg">
             {state.darkMode ? <Sun size={20} /> : <Moon size={20} />}
           </button>
-          <button onClick={() => setShowPrivacy(true)} className="p-2 text-stone-500">
+          <button
+            onClick={() => supabase.auth.signOut()}
+            className="p-2 text-red-500 hover:bg-red-50 rounded-lg ml-1"
+          >
             <Shield size={20} />
           </button>
         </div>
@@ -244,6 +417,7 @@ const App: React.FC = () => {
           <NavItem view="dashboard" icon={LayoutDashboard} label="Pulse" />
           <NavItem view="transactions" icon={Receipt} label="Ledger" />
           <NavItem view="budgets" icon={PieChart} label="Allocations" />
+          <NavItem view="wishlist" icon={Gift} label="Wishlist" />
           <NavItem view="advisor" icon={BrainCircuit} label="Oracle" />
         </nav>
 
@@ -281,8 +455,9 @@ const App: React.FC = () => {
       <main className="flex-1 p-4 md:p-10 pb-24 md:pb-10 overflow-y-auto h-screen bg-stone-50/50 dark:bg-stone-950">
         <div className="max-w-6xl mx-auto animate-in fade-in slide-in-from-bottom-2 duration-700">
           {currentView === 'dashboard' && <Dashboard transactions={state.transactions} budgets={state.budgets} />}
-          {currentView === 'transactions' && <Transactions transactions={state.transactions} budgets={state.budgets} onAdd={addTransaction} onDelete={deleteTransaction} onReorder={handleReorder} />}
-          {currentView === 'budgets' && <Budgets budgets={state.budgets} transactions={state.transactions} onUpdateBudgets={updateBudgets} onDeleteBudget={deleteBudget} />}
+          {currentView === 'transactions' && <Transactions transactions={state.transactions} budgets={state.budgets} onAdd={addTransaction} onDelete={queueDeleteTransaction} onReorder={handleReorder} pendingDeletes={pendingTransactionDeletes} onUndoDelete={undoDeleteTransaction} />}
+          {currentView === 'budgets' && <Budgets budgets={state.budgets} transactions={state.transactions} onUpdateBudgets={updateBudgets} onDeleteBudget={queueDeleteBudget} pendingDeletes={pendingBudgetDeletes} onUndoDelete={undoDeleteBudget} />}
+          {currentView === 'wishlist' && <Wishlist wishlist={state.wishlist} unallocatedCash={unallocated} onAdd={addWishlist} onDelete={queueDeleteWishlist} onPromote={promoteToBudget} onUpdateWishlist={updateWishlist} pendingDeletes={pendingWishlistDeletes} onUndoDelete={undoDeleteWishlist} />}
           {currentView === 'advisor' && <SmartAdvisor transactions={state.transactions} budgets={state.budgets} />}
         </div>
       </main>
@@ -292,14 +467,8 @@ const App: React.FC = () => {
         <MobileNavItem view="dashboard" icon={LayoutDashboard} label="Pulse" />
         <MobileNavItem view="transactions" icon={Receipt} label="Ledger" />
         <MobileNavItem view="budgets" icon={PieChart} label="Allocations" />
+        <MobileNavItem view="wishlist" icon={Gift} label="Wishlist" />
         <MobileNavItem view="advisor" icon={BrainCircuit} label="Oracle" />
-        <button
-          onClick={() => supabase.auth.signOut()}
-          className="flex flex-col items-center justify-center p-2 rounded-xl text-stone-300 dark:text-stone-600 hover:text-red-500"
-        >
-          <Shield size={24} />
-          <span className="text-[10px] font-bold uppercase tracking-wide mt-1">Exit</span>
-        </button>
       </nav>
 
       {showPrivacy && <PrivacyModal onClose={() => setShowPrivacy(false)} />}

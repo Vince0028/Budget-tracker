@@ -1,5 +1,5 @@
 
--- Create User Profiles table
+
 create table user_profiles (
   id uuid references auth.users not null primary key,
   name text,
@@ -16,7 +16,6 @@ create policy "Users can view their own profile" on user_profiles
 create policy "Users can update their own profile" on user_profiles
   for update using (auth.uid() = id);
 
--- Create Transactions table
 create table transactions (
   id uuid default uuid_generate_v4() primary key,
   user_id uuid references auth.users not null,
@@ -46,7 +45,7 @@ create policy "Users can update their own transactions" on transactions
 create policy "Users can delete their own transactions" on transactions
   for delete using (auth.uid() = user_id);
 
--- Create Budgets table
+
 create table budgets (
   id uuid default uuid_generate_v4() primary key,
   user_id uuid references auth.users not null,
@@ -70,7 +69,7 @@ create policy "Users can update their own budgets" on budgets
 create policy "Users can delete their own budgets" on budgets
   for delete using (auth.uid() = user_id);
 
--- Create function to handle new user signup
+
 create or replace function public.handle_new_user()
 returns trigger as $$
 begin
@@ -80,12 +79,12 @@ begin
 end;
 $$ language plpgsql security definer;
 
--- Trigger the function every time a user is created
+
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
 
--- Create Indexes for Performance
+
 create index transactions_user_id_idx on transactions (user_id);
 create index transactions_date_idx on transactions (date);
 create index budgets_user_id_idx on budgets (user_id);

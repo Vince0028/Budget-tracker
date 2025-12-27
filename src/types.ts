@@ -24,6 +24,16 @@ export interface Budget {
   color: string;
 }
 
+export interface WishlistItem {
+  id: string;
+  user_id?: string;
+  name: string;
+  amount: number;
+  priority: 'low' | 'medium' | 'high';
+  link?: string;
+  note?: string;
+}
+
 export interface UserProfile {
   name: string;
   email: string;
@@ -33,11 +43,12 @@ export interface UserProfile {
 export interface AppState {
   transactions: Transaction[];
   budgets: Budget[];
+  wishlist: WishlistItem[];
   user: UserProfile;
   darkMode: boolean;
 }
 
-export type ViewState = 'dashboard' | 'transactions' | 'budgets' | 'reports' | 'advisor' | 'settings' | 'privacy';
+export type ViewState = 'dashboard' | 'transactions' | 'budgets' | 'advisor' | 'wishlist';
 
 
 export const EXPENSE_CATEGORIES = [
