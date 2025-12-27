@@ -300,47 +300,49 @@ const Wishlist: React.FC<Props> = ({ wishlist, unallocatedCash, onAdd, onDelete,
                                 deleteDeadline={pendingDeletes[item.id]}
                                 onUndo={() => onUndoDelete(item.id)}
                             >
-                                <div className="group bg-white dark:bg-stone-900 p-6 rounded-2xl shadow-sm border border-stone-200 dark:border-stone-800 hover:shadow-md transition-all relative pl-12 h-full flex flex-col">
+                                <QCard className="relative group flex flex-col h-full border-b-[4px] border-r-[3px]Hover hover:-translate-y-1 transition-transform duration-200">
                                     <div className="flex justify-between items-start mb-4">
-                                        <div>
-                                            <span className={`inline-block px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-widest mb-2 ${priorityColors[item.priority]}`}>
-                                                {item.priority} Priority
+                                        <div className="flex flex-col gap-1 pr-4">
+                                            <span className={`self-start px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-widest ${priorityColors[item.priority]}`}>
+                                                {item.priority}
                                             </span>
-                                            <h3 className="text-lg font-bold text-stone-800 dark:text-stone-100">{item.name}</h3>
+                                            <h3 className="font-black text-xl text-stone-900 dark:text-stone-100 leading-none tracking-tight">{item.name}</h3>
                                         </div>
-                                        <div className="text-xl font-bold text-stone-800 dark:text-stone-100">
+                                        <div className="text-lg font-black text-stone-800 dark:text-stone-200 whitespace-nowrap">
                                             ₱{item.amount.toLocaleString()}
                                         </div>
                                     </div>
 
                                     {item.link && (
-                                        <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline flex items-center gap-1 mb-4">
-                                            <ExternalLink size={12} /> View Item
+                                        <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-stone-400 hover:text-stone-800 dark:hover:text-stone-200 transition-colors flex items-center gap-1 mb-6">
+                                            <ExternalLink size={12} strokeWidth={3} />
+                                            Visit Link
                                         </a>
                                     )}
 
-                                    <div className="mt-auto pt-4 border-t border-stone-100 dark:border-stone-800 flex items-center justify-between gap-3 opacity-100 md:opacity-40 group-hover:opacity-100 transition-opacity">
-                                        <button
-                                            onClick={() => handleEditClick(item)}
-                                            className="p-2 text-stone-400 hover:text-stone-700 transition-colors"
-                                        >
-                                            <Pencil size={18} />
-                                        </button>
-                                        <button
-                                            onClick={() => setConfirmState({ type: 'delete', id: item.id, data: item })}
-                                            className="p-2 text-stone-400 hover:text-red-500 transition-colors"
-                                        >
-                                            <Trash2 size={18} />
-                                        </button>
+                                    <div className="mt-auto pt-4 border-t-2 border-dashed border-stone-100 dark:border-stone-800 flex items-center justify-between gap-2">
+                                        <div className="flex gap-1">
+                                            <button
+                                                onClick={() => handleEditClick(item)}
+                                                className="p-2 text-stone-300 hover:text-stone-700 dark:hover:text-stone-300 transition-colors"
+                                            >
+                                                <Pencil size={18} />
+                                            </button>
+                                            <button
+                                                onClick={() => setConfirmState({ type: 'delete', id: item.id, data: item })}
+                                                className="p-2 text-stone-300 hover:text-red-500 transition-colors"
+                                            >
+                                                <Trash2 size={18} />
+                                            </button>
+                                        </div>
                                         <button
                                             onClick={() => setConfirmState({ type: 'promote', id: item.id, data: item })}
-                                            className="ml-auto flex items-center justify-center gap-2 py-2 px-4 bg-stone-800 dark:bg-stone-100 text-stone-100 dark:text-stone-900 rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-stone-700 dark:hover:bg-stone-200 transition-colors"
+                                            className="flex items-center gap-2 py-2 px-4 bg-stone-900 dark:bg-stone-100 text-stone-100 dark:text-stone-900 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-stone-700 dark:hover:bg-stone-300 transition-colors shadow-sm"
                                         >
-                                            <ArrowUpRight size={14} />
-                                            Fund It
+                                            Fund It <ArrowUpRight size={14} strokeWidth={3} />
                                         </button>
                                     </div>
-                                </div>
+                                </QCard>
                             </SortableWishlistCard>
                         ))}
                     </div>
