@@ -95,13 +95,17 @@ const App: React.FC = () => {
       else {
         setState(prev => {
           const exists = prev.transactions.some(existing => existing.id === t.id);
-          if (exists) {
-            return {
-              ...prev,
-              transactions: prev.transactions.map(existing => existing.id === t.id ? t : existing)
-            };
-          }
-          return { ...prev, transactions: [t, ...prev.transactions] };
+          let newTransactions = exists
+            ? prev.transactions.map(existing => existing.id === t.id ? t : existing)
+            : [...prev.transactions, t];
+
+          // Sort transactions by date descending
+          newTransactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+          return {
+            ...prev,
+            transactions: newTransactions
+          };
         });
       }
     }
@@ -223,7 +227,7 @@ const App: React.FC = () => {
       <main className="flex-1 p-4 md:p-10 pb-24 md:pb-10 overflow-y-auto h-screen bg-stone-50/50 dark:bg-stone-950">
         <div className="max-w-6xl mx-auto animate-in fade-in slide-in-from-bottom-2 duration-700">
           {currentView === 'dashboard' && <Dashboard transactions={state.transactions} budgets={state.budgets} />}
-          {currentView === 'transactions' && <Transactions transactions={state.transactions} budgets={state.budgets} onAdd={addTransaction} onDelete={deleteTransaction} />}
+          {currentView === 'transactions' && <Transactions transactions={state.transactions} budgets={state.budgets} onAdd={addTransaction} onDelete={deleteTransaction} onReorder={(t) => setState(prev => ({ ...prev, transactions: t }))} />}
           {currentView === 'budgets' && <Budgets budgets={state.budgets} transactions={state.transactions} onUpdateBudgets={updateBudgets} />}
           {currentView === 'advisor' && <SmartAdvisor transactions={state.transactions} budgets={state.budgets} />}
         </div>

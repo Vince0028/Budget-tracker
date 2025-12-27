@@ -1,8 +1,0 @@
-{
-  "name": "BETA - Budget Evaluation Tracking App",
-  "description": "A hand-crafted, imperfectly styled budget tracker powered by AI for smart insights and receipt scanning.",
-  "requestFramePermissions": [
-    "camera",
-    "microphone"
-  ]
-}
