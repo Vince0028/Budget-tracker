@@ -161,6 +161,12 @@ const App: React.FC = () => {
     }
   };
 
+  const deleteBudget = async (id: string) => {
+    const { error } = await supabase.from('budgets').delete().eq('id', id);
+    if (error) console.error("Error deleting budget:", error);
+    else setState(prev => ({ ...prev, budgets: prev.budgets.filter(b => b.id !== id) }));
+  };
+
   const NavItem = ({ view, icon: Icon, label }: { view: ViewState, icon: any, label: string }) => (
     <button
       onClick={() => setCurrentView(view)}
@@ -261,7 +267,7 @@ const App: React.FC = () => {
         <div className="max-w-6xl mx-auto animate-in fade-in slide-in-from-bottom-2 duration-700">
           {currentView === 'dashboard' && <Dashboard transactions={state.transactions} budgets={state.budgets} />}
           {currentView === 'transactions' && <Transactions transactions={state.transactions} budgets={state.budgets} onAdd={addTransaction} onDelete={deleteTransaction} onReorder={handleReorder} />}
-          {currentView === 'budgets' && <Budgets budgets={state.budgets} transactions={state.transactions} onUpdateBudgets={updateBudgets} />}
+          {currentView === 'budgets' && <Budgets budgets={state.budgets} transactions={state.transactions} onUpdateBudgets={updateBudgets} onDeleteBudget={deleteBudget} />}
           {currentView === 'advisor' && <SmartAdvisor transactions={state.transactions} budgets={state.budgets} />}
         </div>
       </main>

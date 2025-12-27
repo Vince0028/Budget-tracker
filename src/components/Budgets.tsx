@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Budget, Transaction, TransactionType, EXPENSE_CATEGORIES, THEME_COLORS } from '../types';
 import { QButton, QInput, QSelect, QCard } from './UI/QuirkyComponents';
 import ConfirmModal from './ConfirmModal';
@@ -12,18 +12,55 @@ interface Props {
     budgets: Budget[];
     transactions: Transaction[];
     onUpdateBudgets: (budgets: Budget[]) => void;
+    onDeleteBudget: (id: string) => void;
 }
 
-const SortableBudgetCard = ({ budget, children }: { budget: Budget, children: React.ReactNode }) => {
+const SortableBudgetCard = ({ budget, children, isPendingDelete, onUndo }: { budget: Budget, children: React.ReactNode, isPendingDelete?: boolean, onUndo?: () => void }) => {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: budget.id });
+    const [timeLeft, setTimeLeft] = useState(20);
+
+    useEffect(() => {
+        if (isPendingDelete) {
+            setTimeLeft(20);
+            const timer = setInterval(() => {
+                setTimeLeft((prev) => {
+                    if (prev <= 1) {
+                        clearInterval(timer);
+                        return 0;
+                    }
+                    return prev - 1;
+                });
+            }, 1000);
+            return () => clearInterval(timer);
+        }
+    }, [isPendingDelete]);
 
     const style = {
         transform: CSS.Transform.toString(transform),
         transition,
-        zIndex: isDragging ? 20 : 'auto', // Higher z-index while dragging
+        zIndex: isDragging ? 20 : 'auto',
         opacity: isDragging ? 0.8 : 1,
-        touchAction: 'pan-y', // Allow vertical scrolling, sensor waits for hold
+        touchAction: 'pan-y',
     };
+
+    if (isPendingDelete) {
+        return (
+            <div ref={setNodeRef} style={style} className="h-full relative select-none p-6 border-2 border-stone-200 dark:border-stone-800 bg-stone-100/50 dark:bg-stone-900/50 rounded-lg flex flex-col justify-center items-center grayscale opacity-60">
+                <div className="flex flex-col items-center gap-2 w-full">
+                    <span className="italic text-stone-500 font-medium text-sm">Deleting in {timeLeft}s...</span>
+                    <div className="w-full h-1 bg-stone-200 dark:bg-stone-800 rounded-full overflow-hidden">
+                        <div className="h-full bg-stone-400 animate-[width_20s_linear_forwards] w-full origin-left transform -scale-x-100"></div>
+                    </div>
+                </div>
+                <button
+                    onClick={onUndo}
+                    className="mt-4 px-4 py-2 bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300 rounded-lg text-sm font-bold hover:bg-stone-300 dark:hover:bg-stone-700 transition-colors"
+                >
+                    Undo Delete
+                </button>
+            </div>
+        );
+    }
 
     return (
         <div ref={setNodeRef} style={style} className="h-full relative select-none" {...attributes} {...listeners}>
@@ -36,12 +73,80 @@ const SortableBudgetCard = ({ budget, children }: { budget: Budget, children: Re
     );
 };
 
-const Budgets: React.FC<Props> = ({ budgets, transactions, onUpdateBudgets }) => {
+const Budgets: React.FC<Props> = ({ budgets, transactions, onUpdateBudgets, onDeleteBudget }) => {
     const [newBudget, setNewBudget] = useState<Partial<Budget>>({ category: EXPENSE_CATEGORIES[0], limit: 100, color: THEME_COLORS[0] });
     const [customCategory, setCustomCategory] = useState('');
     const [showAdd, setShowAdd] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [confirmState, setConfirmState] = useState<{ type: 'delete' | 'edit' | null; id: string | null; data?: Budget }>({ type: null, id: null });
+
+    const [pendingDeletes, setPendingDeletes] = useState<Set<string>>(new Set());
+    const deleteTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+
+    useEffect(() => {
+        return () => {
+            // Commit all pending deletes on unmount
+            Object.entries(deleteTimers.current).forEach(([id, timer]) => {
+                clearTimeout(timer);
+                handleDeleteWithCommit(id);
+            });
+        };
+    }, []);
+
+    const queueDelete = (id: string) => {
+        setPendingDeletes(prev => {
+            const next = new Set(prev);
+            next.add(id);
+            return next;
+        });
+
+        deleteTimers.current[id] = setTimeout(() => {
+            commitDelete(id);
+        }, 20000); // 20 seconds
+    };
+
+    const commitDelete = (id: string) => {
+        handleDeleteWithCommit(id);
+        setPendingDeletes(prev => {
+            const next = new Set(prev);
+            next.delete(id);
+            return next;
+        });
+        const newTimers = { ...deleteTimers.current };
+        delete newTimers[id];
+        deleteTimers.current = newTimers;
+    };
+
+    const undoDelete = (id: string) => {
+        if (deleteTimers.current[id]) {
+            clearTimeout(deleteTimers.current[id]);
+            const newTimers = { ...deleteTimers.current };
+            delete newTimers[id];
+            deleteTimers.current = newTimers;
+        }
+        setPendingDeletes(prev => {
+            const next = new Set(prev);
+            next.delete(id);
+            return next;
+        });
+    };
+
+    const handleDeleteWithCommit = (id: string) => {
+        // Need to access current budgets state, which might be stale in timeout closure.
+        // However, onUpdateBudgets updates parent state.
+        // Ideally we should use functional update but here we depend on props.
+        // The safest way here is to let the parent handle the actual removal, which we do via onUpdateBudgets.
+        // But since we are inside a timeout, 'budgets' prop might be stale.
+        // We will assume the parent handles state updates correctly or that we rebuild this logic.
+        // Wait, 'budgets' IS a prop. Timeouts capture the scope when created.
+        // This is tricky. We should rely on functional state update if we had it, but we have onUpdateBudgets.
+        // Let's rely on React keeping the callback fresh or acceptable behavior for now.
+        // actually, we can't reliably use 'budgets' from the closure if it changed.
+        // BUT, since pending items are visually there but seemingly "deleted" to the user, the user won't likely be editing other things that race condition this.
+        // A better approach for the "commit" is to call a function that gets the LATEST budgets.
+        // Since we can't easily get latest props in a closure without ref, let's use a ref for budgets.
+        removeFromBudgets(id);
+    };
 
     const totalIncome = transactions
         .filter(t => t.type === TransactionType.INCOME)
@@ -100,13 +205,22 @@ const Budgets: React.FC<Props> = ({ budgets, transactions, onUpdateBudgets }) =>
         setShowAdd(true);
     };
 
+    const budgetsRef = useRef(budgets);
+    useEffect(() => {
+        budgetsRef.current = budgets;
+    }, [budgets]);
+
+    const removeFromBudgets = (id: string) => {
+        onDeleteBudget(id);
+    };
+
     const handleDelete = (id: string) => {
-        onUpdateBudgets(budgets.filter(b => b.id !== id));
+        queueDelete(id);
     };
 
     const handleConfirmAction = () => {
         if (confirmState.type === 'delete' && confirmState.id) {
-            handleDelete(confirmState.id);
+            queueDelete(confirmState.id);
         } else if (confirmState.type === 'edit' && confirmState.data) {
             proceedWithEdit(confirmState.data);
         }
@@ -233,7 +347,12 @@ const Budgets: React.FC<Props> = ({ budgets, transactions, onUpdateBudgets }) =>
                             const isOver = spent > budget.limit;
 
                             return (
-                                <SortableBudgetCard key={budget.id} budget={budget}>
+                                <SortableBudgetCard
+                                    key={budget.id}
+                                    budget={budget}
+                                    isPendingDelete={pendingDeletes.has(budget.id)}
+                                    onUndo={() => undoDelete(budget.id)}
+                                >
                                     <QCard className="relative group flex flex-col h-full border-b-[4px] border-r-[3px]">
                                         <div className="flex justify-between items-start mb-6">
                                             <div className="flex flex-col">

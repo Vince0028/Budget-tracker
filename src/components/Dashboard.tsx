@@ -19,13 +19,35 @@ const Dashboard: React.FC<Props> = ({ transactions, budgets }) => {
     const savings = income - expenses;
     const savingsRate = income > 0 ? (savings / income) * 100 : 0;
 
-    const chartData = transactions
-        .slice(0, 30)
-        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-        .map(t => ({
-            date: t.date.substring(5),
-            amount: t.type === TransactionType.EXPENSE ? -t.amount : t.amount
-        }));
+    // Group transactions by date
+    const groupedData = transactions.reduce((acc, t) => {
+        const date = t.date;
+        if (!acc[date]) {
+            acc[date] = { income: 0, expense: 0 };
+        }
+        if (t.type === TransactionType.INCOME) {
+            acc[date].income += t.amount;
+        } else {
+            acc[date].expense += t.amount;
+        }
+        return acc;
+    }, {} as Record<string, { income: number, expense: number }>);
+
+    // Generate last 30 days to ensure continuous timeline
+    const today = new Date();
+    const chartData = Array.from({ length: 30 }, (_, i) => {
+        const d = new Date();
+        d.setDate(today.getDate() - (29 - i));
+        const dateStr = d.toISOString().split('T')[0];
+        const data = groupedData[dateStr] || { income: 0, expense: 0 };
+
+        return {
+            date: dateStr,
+            displayDate: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+            income: data.income,
+            expense: data.expense
+        };
+    });
 
     const categoryData = Object.entries(transactions.reduce((acc: Record<string, number>, t) => {
         if (t.type === TransactionType.EXPENSE) {
@@ -103,38 +125,67 @@ const Dashboard: React.FC<Props> = ({ transactions, budgets }) => {
                 <QCard title="Cash Flow" className="lg:col-span-2">
                     <div className="h-[200px] w-full mt-4">
                         <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                            <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                                 <defs>
-                                    <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
-                                        <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                                    <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
+                                        <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                                    </linearGradient>
+                                    <linearGradient id="colorExpense" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3} />
+                                        <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
                                     </linearGradient>
                                 </defs>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e7e5e4" strokeOpacity={0.5} />
-                                {/* <XAxis dataKey="date" hide /> */}
+                                <XAxis
+                                    dataKey="displayDate"
+                                    axisLine={false}
+                                    tickLine={false}
+                                    tick={{ fill: '#a8a29e', fontSize: 10 }}
+                                    dy={10}
+                                    interval={4}
+                                />
+                                <YAxis
+                                    axisLine={false}
+                                    tickLine={false}
+                                    tick={{ fill: '#a8a29e', fontSize: 10 }}
+                                    tickFormatter={(value) => `₱${value}`}
+                                />
                                 <Tooltip
                                     cursor={{ stroke: '#a8a29e', strokeWidth: 1, strokeDasharray: '4 4' }}
                                     contentStyle={{
-                                        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                                        backgroundColor: 'rgba(255, 255, 255, 0.95)',
                                         borderRadius: '12px',
                                         border: 'none',
                                         boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
                                         padding: '12px 16px'
                                     }}
-                                    itemStyle={{ color: '#1c1917', fontWeight: 'bold' }}
-                                    formatter={(value: number) => [`₱${Math.abs(value).toLocaleString()}`, value > 0 ? 'Income' : 'Expense']}
-                                    labelStyle={{ display: 'none' }}
+                                    labelStyle={{ color: '#78716c', marginBottom: '8px', fontSize: '12px', fontWeight: 'bold' }}
+                                    formatter={(value: number, name: string) => [
+                                        `₱${value.toLocaleString()}`,
+                                        name === 'income' ? 'Income' : 'Expense'
+                                    ]}
                                 />
                                 <Area
                                     type="monotone"
-                                    dataKey="amount"
-                                    stroke="#8b5cf6"
+                                    dataKey="income"
+                                    name="income"
+                                    stroke="#22c55e"
                                     strokeWidth={3}
-                                    fillOpacity={1}
-                                    fill="url(#colorAmount)"
+                                    fillOpacity={0.5}
+                                    fill="url(#colorIncome)"
                                     animationDuration={1500}
                                 />
-                                <ReferenceLine y={0} stroke="#a8a29e" strokeDasharray="3 3" />
+                                <Area
+                                    type="monotone"
+                                    dataKey="expense"
+                                    name="expense"
+                                    stroke="#ef4444"
+                                    strokeWidth={3}
+                                    fillOpacity={0.5}
+                                    fill="url(#colorExpense)"
+                                    animationDuration={1500}
+                                />
                             </AreaChart>
                         </ResponsiveContainer>
                     </div>
