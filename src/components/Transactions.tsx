@@ -1,5 +1,5 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Transaction, TransactionType, CATEGORIES, EXPENSE_CATEGORIES, INCOME_CATEGORIES, Budget } from '../types';
 import { QButton, QInput, QSelect, QCard, QBadge } from './UI/QuirkyComponents';
 import ConfirmModal from './ConfirmModal';
@@ -17,8 +17,25 @@ interface Props {
   onReorder?: (transactions: Transaction[]) => void;
 }
 
-const SortableTransactionRow = ({ transaction, onEdit, onDelete }: { transaction: Transaction, onEdit: () => void, onDelete: () => void }) => {
+const SortableTransactionRow = ({ transaction, onEdit, onDelete, isPendingDelete, onUndo }: { transaction: Transaction, onEdit: () => void, onDelete: () => void, isPendingDelete?: boolean, onUndo?: () => void }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: transaction.id });
+  const [timeLeft, setTimeLeft] = useState(20);
+
+  useEffect(() => {
+    if (isPendingDelete) {
+      setTimeLeft(20);
+      const timer = setInterval(() => {
+        setTimeLeft((prev) => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      return () => clearInterval(timer);
+    }
+  }, [isPendingDelete]);
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -28,6 +45,25 @@ const SortableTransactionRow = ({ transaction, onEdit, onDelete }: { transaction
     position: 'relative' as 'relative', // Explicit cast
     touchAction: 'pan-y',
   };
+
+  if (isPendingDelete) {
+    return (
+      <div ref={setNodeRef} style={style} className="p-4 border-b-2 border-stone-100 dark:border-stone-800 bg-stone-100/50 dark:bg-stone-900/50 flex justify-between items-center rounded-sm select-none grayscale opacity-60">
+        <div className="flex items-center gap-4 flex-1">
+          <span className="italic text-stone-500 font-medium text-sm">Deleting in {timeLeft}s...</span>
+          <div className="flex-1 h-1 bg-stone-200 dark:bg-stone-800 rounded-full overflow-hidden">
+            <div className="h-full bg-stone-400 animate-[width_20s_linear_forwards] w-full origin-left transform -scale-x-100"></div>
+          </div>
+        </div>
+        <button
+          onClick={onUndo}
+          className="ml-4 px-3 py-1 bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300 rounded text-sm font-bold hover:bg-stone-300 dark:hover:bg-stone-700 transition-colors"
+        >
+          Undo
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div ref={setNodeRef} style={style} className="group bg-white dark:bg-stone-900 p-4 border-b-2 border-stone-100 dark:border-stone-800 hover:bg-stone-50 dark:hover:bg-stone-800/50 transition-colors flex justify-between items-center rounded-sm select-none" {...attributes} {...listeners}>
@@ -77,6 +113,57 @@ const Transactions: React.FC<Props> = ({ transactions, budgets, onAdd, onDelete,
   const [isScanning, setIsScanning] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [confirmState, setConfirmState] = useState<{ type: 'delete' | 'edit' | null; id: string | null; data?: Transaction }>({ type: null, id: null });
+
+  const [pendingDeletes, setPendingDeletes] = useState<Set<string>>(new Set());
+  const deleteTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+
+  useEffect(() => {
+    return () => {
+      // Commit all pending deletes on unmount
+      Object.entries(deleteTimers.current).forEach(([id, timer]) => {
+        clearTimeout(timer);
+        onDelete(id);
+      });
+    };
+  }, [onDelete]);
+
+  const queueDelete = (id: string) => {
+    setPendingDeletes(prev => {
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
+
+    deleteTimers.current[id] = setTimeout(() => {
+      commitDelete(id);
+    }, 20000); // 20 seconds
+  };
+
+  const commitDelete = (id: string) => {
+    onDelete(id);
+    setPendingDeletes(prev => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+    const newTimers = { ...deleteTimers.current };
+    delete newTimers[id];
+    deleteTimers.current = newTimers;
+  };
+
+  const undoDelete = (id: string) => {
+    if (deleteTimers.current[id]) {
+      clearTimeout(deleteTimers.current[id]);
+      const newTimers = { ...deleteTimers.current };
+      delete newTimers[id];
+      deleteTimers.current = newTimers;
+    }
+    setPendingDeletes(prev => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+  };
 
   const [newTrans, setNewTrans] = useState<Partial<Transaction>>({
     type: TransactionType.EXPENSE,
@@ -162,7 +249,7 @@ const Transactions: React.FC<Props> = ({ transactions, budgets, onAdd, onDelete,
 
   const handleConfirmAction = () => {
     if (confirmState.type === 'delete' && confirmState.id) {
-      onDelete(confirmState.id);
+      queueDelete(confirmState.id);
     } else if (confirmState.type === 'edit' && confirmState.data) {
       proceedWithEdit(confirmState.data);
     }
@@ -249,7 +336,7 @@ const Transactions: React.FC<Props> = ({ transactions, budgets, onAdd, onDelete,
         onConfirm={handleConfirmAction}
         title={confirmState.type === 'delete' ? "Delete Transaction?" : "Edit Transaction?"}
         message={confirmState.type === 'delete'
-          ? "Are you sure you want to delete this transaction? This action cannot be undone."
+          ? "Are you sure you want to delete this transaction?"
           : "Are you sure you want to edit this transaction? You'll be able to modify all details."}
         confirmText={confirmState.type === 'delete' ? "Yes, Delete" : "Yes, Edit"}
         variant={confirmState.type === 'delete' ? 'danger' : 'primary'}
@@ -371,6 +458,8 @@ const Transactions: React.FC<Props> = ({ transactions, budgets, onAdd, onDelete,
                       <SortableTransactionRow
                         key={t.id}
                         transaction={t}
+                        isPendingDelete={pendingDeletes.has(t.id)}
+                        onUndo={() => undoDelete(t.id)}
                         onEdit={() => handleEditClick(t)}
                         onDelete={() => setConfirmState({ type: 'delete', id: t.id })}
                       />
