@@ -10,7 +10,7 @@ import Budgets from './components/Budgets';
 import Wishlist from './components/Wishlist';
 import SmartAdvisor from './components/SmartAdvisor';
 import { QButton } from './components/UI/QuirkyComponents';
-import { LayoutDashboard, Receipt, PieChart, BrainCircuit, Moon, Sun, Shield, Gift } from 'lucide-react';
+import { LayoutDashboard, Receipt, PieChart, BrainCircuit, Moon, Sun, Shield, Gift, LogOut } from 'lucide-react';
 
 const PrivacyModal: React.FC<{ onClose: () => void }> = ({ onClose }) => (
   <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
@@ -394,7 +394,7 @@ const App: React.FC = () => {
             onClick={() => supabase.auth.signOut()}
             className="p-2 text-red-500 hover:bg-red-50 rounded-lg ml-1"
           >
-            <Shield size={20} />
+            <LogOut size={20} />
           </button>
         </div>
       </header>
@@ -442,7 +442,7 @@ const App: React.FC = () => {
             onClick={() => supabase.auth.signOut()}
             className="flex items-center h-10 px-3 text-stone-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors w-full group/logout"
           >
-            <div className="min-w-[1.25rem] flex justify-center"><Shield size={20} className="group-hover/logout:rotate-12 transition-transform" /></div>
+            <div className="min-w-[1.25rem] flex justify-center"><LogOut size={20} className="group-hover/logout:translate-x-1 transition-transform" /></div>
             <span className="ml-4 text-xs font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap group-hover/logout:text-red-600">Sign Out</span>
           </button>
         </div>

@@ -11,6 +11,8 @@ interface Props {
 }
 
 const Dashboard: React.FC<Props> = ({ transactions, budgets }) => {
+    const [timeRange, setTimeRange] = React.useState<'30' | '90' | '365' | 'all'>('all');
+
     const income = transactions.filter(t => t.type === TransactionType.INCOME).reduce((acc, t) => acc + t.amount, 0);
     const expenses = transactions.filter(t => t.type === TransactionType.EXPENSE).reduce((acc, t) => acc + t.amount, 0);
     const totalAllocated = budgets.reduce((acc, b) => acc + b.limit, 0);
@@ -37,19 +39,30 @@ const Dashboard: React.FC<Props> = ({ transactions, budgets }) => {
     const sortedDates = transactions.map(t => new Date(t.date).getTime()).sort((a, b) => a - b);
     const earliestTimestamp = sortedDates.length > 0 ? sortedDates[0] : new Date().getTime() - (30 * 24 * 60 * 60 * 1000); // Default to 30 days ago if empty
 
-    // Start 2 days before the earliest transaction
-    const startDate = new Date(earliestTimestamp);
-    startDate.setDate(startDate.getDate() - 2);
-
     const today = new Date();
+
+    // Determine start date based on filter
+    let startDate = new Date();
+    if (timeRange === '30') {
+        startDate.setDate(today.getDate() - 30);
+    } else if (timeRange === '90') {
+        startDate.setDate(today.getDate() - 90);
+    } else if (timeRange === '365') {
+        startDate.setDate(today.getDate() - 365);
+    } else {
+        startDate = new Date(earliestTimestamp);
+        startDate.setDate(startDate.getDate() - 2); // Buffer
+    }
+
     // Calculate number of days to show (from start date to today)
-    const dayDiff = Math.ceil((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+    // Ensure we don't go negative days if start date is in future (unlikely but safe)
+    const dayDiff = Math.max(0, Math.ceil((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
 
     const chartData = Array.from({ length: Math.max(dayDiff + 1, 7) }, (_, i) => { // Ensure at least 7 days
         const d = new Date(startDate);
         d.setDate(startDate.getDate() + i);
 
-        // If we go into the future, stop (optional, but good for "today")
+        // If we go into the future, stop
         if (d > today) return null;
 
         const dateStr = d.toISOString().split('T')[0];
@@ -136,72 +149,92 @@ const Dashboard: React.FC<Props> = ({ transactions, budgets }) => {
                     </div>
                 </QCard>
 
-                <QCard title="Cash Flow" className="lg:col-span-2">
-                    <div className="h-[200px] w-full mt-4">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                                <defs>
-                                    <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
-                                        <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
-                                    </linearGradient>
-                                    <linearGradient id="colorExpense" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3} />
-                                        <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
-                                    </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e7e5e4" strokeOpacity={0.5} />
-                                <XAxis
-                                    dataKey="displayDate"
-                                    axisLine={false}
-                                    tickLine={false}
-                                    tick={{ fill: '#a8a29e', fontSize: 10 }}
-                                    dy={10}
-                                    interval={4}
-                                />
-                                <YAxis
-                                    axisLine={false}
-                                    tickLine={false}
-                                    tick={{ fill: '#a8a29e', fontSize: 10 }}
-                                    tickFormatter={(value) => `₱${value}`}
-                                />
-                                <Tooltip
-                                    cursor={{ stroke: '#a8a29e', strokeWidth: 1, strokeDasharray: '4 4' }}
-                                    contentStyle={{
-                                        backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                                        borderRadius: '12px',
-                                        border: 'none',
-                                        boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-                                        padding: '12px 16px'
-                                    }}
-                                    labelStyle={{ color: '#78716c', marginBottom: '8px', fontSize: '12px', fontWeight: 'bold' }}
-                                    formatter={(value: number, name: string) => [
-                                        `₱${value.toLocaleString()}`,
-                                        name === 'income' ? 'Income' : 'Expense'
-                                    ]}
-                                />
-                                <Area
-                                    type="monotone"
-                                    dataKey="income"
-                                    name="income"
-                                    stroke="#22c55e"
-                                    strokeWidth={3}
-                                    fillOpacity={0.5}
-                                    fill="url(#colorIncome)"
-                                    animationDuration={1500}
-                                />
-                                <Area
-                                    type="monotone"
-                                    dataKey="expense"
-                                    name="expense"
-                                    stroke="#ef4444"
-                                    strokeWidth={3}
-                                    fillOpacity={0.5}
-                                    fill="url(#colorExpense)"
-                                    animationDuration={1500}
-                                />
-                            </AreaChart>
-                        </ResponsiveContainer>
+                <QCard className="lg:col-span-2">
+                    <div className="flex justify-between items-center mb-4 border-b-2 border-stone-100 dark:border-stone-800 pb-2">
+                        <h3 className="text-lg font-bold text-stone-800 dark:text-stone-200 inline-block transform -rotate-[0.5deg]">Cash Flow</h3>
+                        <div className="flex gap-1">
+                            {(['30', '90', '365', 'all'] as const).map((range) => (
+                                <button
+                                    key={range}
+                                    onClick={() => setTimeRange(range)}
+                                    className={`px-3 py-1 text-[10px] font-bold uppercase rounded-full transition-colors ${timeRange === range
+                                        ? 'bg-stone-800 text-stone-100 dark:bg-stone-100 dark:text-stone-900'
+                                        : 'bg-stone-100 text-stone-500 hover:bg-stone-200 dark:bg-stone-800 dark:text-stone-400 dark:hover:bg-stone-700'
+                                        }`}
+                                >
+                                    {range === 'all' ? 'All' : `${range}D`}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="h-[200px] w-full mt-4 overflow-x-auto pb-2">
+                        <div style={{ minWidth: `${Math.max(100, chartData.length * 35)}px`, height: '100%' }}>
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                    <defs>
+                                        <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
+                                            <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                                        </linearGradient>
+                                        <linearGradient id="colorExpense" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3} />
+                                            <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e7e5e4" strokeOpacity={0.5} />
+                                    <XAxis
+                                        dataKey="displayDate"
+                                        axisLine={false}
+                                        tickLine={false}
+                                        tick={{ fill: '#a8a29e', fontSize: 10 }}
+                                        dy={10}
+                                        minTickGap={30}
+                                    />
+                                    <YAxis
+                                        axisLine={false}
+                                        tickLine={false}
+                                        tick={{ fill: '#a8a29e', fontSize: 10 }}
+                                        tickFormatter={(value) => `₱${value}`}
+                                    />
+                                    <Tooltip
+                                        cursor={{ stroke: '#a8a29e', strokeWidth: 1, strokeDasharray: '4 4' }}
+                                        contentStyle={{
+                                            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                                            borderRadius: '12px',
+                                            border: 'none',
+                                            boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+                                            padding: '12px 16px'
+                                        }}
+                                        labelStyle={{ color: '#78716c', marginBottom: '8px', fontSize: '12px', fontWeight: 'bold' }}
+                                        formatter={(value: number, name: string) => [
+                                            `₱${value.toLocaleString()}`,
+                                            name === 'income' ? 'Income' : 'Expense'
+                                        ]}
+                                    />
+                                    <Area
+                                        type="monotone"
+                                        dataKey="income"
+                                        name="income"
+                                        stroke="#22c55e"
+                                        strokeWidth={3}
+                                        fillOpacity={0.5}
+                                        fill="url(#colorIncome)"
+                                        animationDuration={1500}
+                                    />
+                                    <Area
+                                        type="monotone"
+                                        dataKey="expense"
+                                        name="expense"
+                                        stroke="#ef4444"
+                                        strokeWidth={3}
+                                        fillOpacity={0.5}
+                                        fill="url(#colorExpense)"
+                                        animationDuration={1500}
+                                    />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        </div>
                     </div>
                 </QCard>
             </div>
