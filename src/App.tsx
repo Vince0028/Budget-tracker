@@ -11,6 +11,7 @@ import Wishlist from './components/Wishlist';
 import SmartAdvisor from './components/SmartAdvisor';
 import { QButton } from './components/UI/QuirkyComponents';
 import { LayoutDashboard, Receipt, PieChart, BrainCircuit, Moon, Sun, Shield, Gift, LogOut } from 'lucide-react';
+import VantaBackground from './components/UI/VantaBackground';
 
 const PrivacyModal: React.FC<{ onClose: () => void }> = ({ onClose }) => (
   <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
@@ -542,13 +543,16 @@ const App: React.FC = () => {
       <div className="hidden md:block w-20 flex-shrink-0" />
 
 
-      <main className="flex-1 p-4 md:p-10 pb-24 md:pb-10 overflow-y-auto h-screen bg-stone-50/50 dark:bg-stone-950">
-        <div className="max-w-6xl mx-auto animate-in fade-in slide-in-from-bottom-2 duration-700">
-          {currentView === 'dashboard' && <Dashboard transactions={state.transactions} budgets={state.budgets} />}
-          {currentView === 'transactions' && <Transactions transactions={state.transactions} budgets={state.budgets} onAdd={addTransaction} onDelete={queueDeleteTransaction} onReorder={handleReorder} pendingDeletes={pendingTransactionDeletes} onUndoDelete={undoDeleteTransaction} />}
-          {currentView === 'budgets' && <Budgets budgets={state.budgets} transactions={state.transactions} onUpdateBudgets={updateBudgets} onDeleteBudget={queueDeleteBudget} pendingDeletes={pendingBudgetDeletes} onUndoDelete={undoDeleteBudget} />}
-          {currentView === 'wishlist' && <Wishlist wishlist={state.wishlist} unallocatedCash={unallocated} onAdd={addWishlist} onDelete={queueDeleteWishlist} onPromote={promoteToBudget} onUpdateWishlist={updateWishlist} pendingDeletes={pendingWishlistDeletes} onUndoDelete={undoDeleteWishlist} />}
-          {currentView === 'advisor' && <SmartAdvisor transactions={state.transactions} budgets={state.budgets} />}
+      <main className="flex-1 h-screen relative overflow-hidden z-0">
+        <VantaBackground />
+        <div className="absolute inset-0 overflow-y-auto p-4 md:p-10 pb-24 md:pb-10 z-10 scroll-smooth">
+          <div className="max-w-6xl mx-auto animate-in fade-in slide-in-from-bottom-2 duration-700">
+            {currentView === 'dashboard' && <Dashboard transactions={state.transactions} budgets={state.budgets} />}
+            {currentView === 'transactions' && <Transactions transactions={state.transactions} budgets={state.budgets} onAdd={addTransaction} onDelete={queueDeleteTransaction} onReorder={handleReorder} pendingDeletes={pendingTransactionDeletes} onUndoDelete={undoDeleteTransaction} />}
+            {currentView === 'budgets' && <Budgets budgets={state.budgets} transactions={state.transactions} onUpdateBudgets={updateBudgets} onDeleteBudget={queueDeleteBudget} pendingDeletes={pendingBudgetDeletes} onUndoDelete={undoDeleteBudget} />}
+            {currentView === 'wishlist' && <Wishlist wishlist={state.wishlist} unallocatedCash={unallocated} onAdd={addWishlist} onDelete={queueDeleteWishlist} onPromote={promoteToBudget} onUpdateWishlist={updateWishlist} pendingDeletes={pendingWishlistDeletes} onUndoDelete={undoDeleteWishlist} />}
+            {currentView === 'advisor' && <SmartAdvisor transactions={state.transactions} budgets={state.budgets} />}
+          </div>
         </div>
       </main>
 

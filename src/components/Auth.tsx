@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { QButton, QInput, QCard } from './UI/QuirkyComponents';
+import VantaBackground from './UI/VantaBackground';
 import { Shield, Lock, Mail, User, ArrowRight, Loader2 } from 'lucide-react';
 
 const Auth = () => {
@@ -46,8 +47,9 @@ const Auth = () => {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-stone-50 dark:bg-stone-950 p-4">
-            <div className="max-w-md w-full">
+        <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
+            <VantaBackground />
+            <div className="max-w-md w-full relative z-10">
                 <div className="text-center mb-10">
                     <div className="flex items-center justify-center gap-1 mb-4">
                         <div className="inline-flex items-center justify-center w-20 h-20 bg-stone-900 text-stone-100 rounded-2xl transform -rotate-6 shadow-xl">
