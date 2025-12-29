@@ -26,9 +26,92 @@ const PrivacyModal: React.FC<{ onClose: () => void }> = ({ onClose }) => (
   </div>
 );
 
+const TutorialModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+  const [step, setStep] = useState(0);
+
+  const steps = [
+    {
+      title: "Welcome to BETA",
+      desc: "Your new financial command center. Let's get you oriented.",
+      icon: <div className="w-16 h-16 bg-stone-900 dark:bg-stone-100 text-stone-100 dark:text-stone-900 flex items-center justify-center rounded-2xl transform -rotate-3 mb-4"><span className="font-black font-serif text-3xl">B</span></div>
+    },
+    {
+      title: "Pulse (Dashboard)",
+      desc: "Visible via the Layout icon. This is your high-level overview. Track income, expenses, and check your financial heartbeat at a glance.",
+      icon: <LayoutDashboard size={64} className="text-stone-700 dark:text-stone-200 mb-4" />
+    },
+    {
+      title: "Ledger (Transactions)",
+      desc: "Found at the Receipt icon. Record every peso in and out. Tag them, sort them, and keep your records straight.",
+      icon: <Receipt size={64} className="text-stone-700 dark:text-stone-200 mb-4" />
+    },
+    {
+      title: "Allocations (Budgets)",
+      desc: "The Pie Chart icon. Give every peso a job. Set limits for categories and make sure you don't overspend.",
+      icon: <PieChart size={64} className="text-stone-700 dark:text-stone-200 mb-4" />
+    },
+    {
+      title: "Wishlist",
+      desc: "The Gift icon. See something you want? add it here. Prioritize your wants and turn them into goals.",
+      icon: <Gift size={64} className="text-stone-700 dark:text-stone-200 mb-4" />
+    },
+    {
+      title: "Oracle (Smart Advisor)",
+      desc: "The Brain/Circuit icon. Need advice? Our AI analyzes your spending habits and gives you actionable tips.",
+      icon: <BrainCircuit size={64} className="text-stone-700 dark:text-stone-200 mb-4" />
+    }
+  ];
+
+  const currentStep = steps[step];
+
+  return (
+    <div className="fixed inset-0 bg-stone-900/80 z-[60] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-300">
+      <div className="bg-white dark:bg-stone-900 p-8 rounded-2xl max-w-sm w-full shadow-2xl border-2 border-stone-200 dark:border-stone-700 flex flex-col items-center text-center relative overflow-hidden">
+
+        {/* Progress Bar */}
+        <div className="absolute top-0 left-0 w-full h-2 bg-stone-100 dark:bg-stone-800">
+          <div
+            className="h-full bg-stone-800 dark:bg-stone-100 transition-all duration-300"
+            style={{ width: `${((step + 1) / steps.length) * 100}%` }}
+          />
+        </div>
+
+        <div className="mt-6 animate-in slide-in-from-right-4 fade-in duration-300" key={step}>
+          {currentStep.icon}
+        </div>
+
+        <h3 className="text-2xl font-black uppercase tracking-tighter mb-2 text-stone-800 dark:text-stone-100">{currentStep.title}</h3>
+        <p className="text-stone-500 dark:text-stone-400 font-medium leading-relaxed mb-8">{currentStep.desc}</p>
+
+        <div className="flex gap-2 w-full">
+          {step > 0 && (
+            <QButton variant="secondary" onClick={() => setStep(s => s - 1)} className="flex-1">Previous</QButton>
+          )}
+          <QButton
+            onClick={() => {
+              if (step < steps.length - 1) setStep(s => s + 1);
+              else onClose();
+            }}
+            className="flex-1"
+          >
+            {step < steps.length - 1 ? "Next" : "Let's Start"}
+          </QButton>
+        </div>
+
+        <div className="mt-4 flex gap-1">
+          {steps.map((_, i) => (
+            <div key={i} className={`w-2 h-2 rounded-full transition-colors ${i === step ? 'bg-stone-800 dark:bg-stone-100' : 'bg-stone-300 dark:bg-stone-700'}`} />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<ViewState>('dashboard');
   const [showPrivacy, setShowPrivacy] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
 
   const [state, setState] = useState<AppState>({
@@ -56,6 +139,13 @@ const App: React.FC = () => {
         wishlist: wishlist as WishlistItem[] || [],
         user: profile ? { name: profile.name, email: profile.email, currency: profile.currency } : prev.user
       }));
+
+      // Check for empty state to trigger tutorial
+      if ((!transactions || transactions.length === 0) && (!budgets || budgets.length === 0)) {
+        // We can also check localStorage to see if they've already seen it, but "detection that user still has not put anything" creates a natural guard.
+        // If they add data, this check fails next time.
+        setShowTutorial(true);
+      }
     };
     /* ... (rest of useEffect logic remains same, just ensuring fetch includes wishlist) ... */
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -472,6 +562,7 @@ const App: React.FC = () => {
       </nav>
 
       {showPrivacy && <PrivacyModal onClose={() => setShowPrivacy(false)} />}
+      {showTutorial && <TutorialModal onClose={() => setShowTutorial(false)} />}
     </div >
   );
 };
