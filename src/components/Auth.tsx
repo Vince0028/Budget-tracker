@@ -160,7 +160,7 @@ const Auth = () => {
                     )}
                 </div>
 
-                <p className="text-center text-stone-400 text-xs mt-8">
+                <p className="text-center text-stone-800 dark:text-stone-200 text-xs mt-8 font-bold tracking-wide opacity-80 mix-blend-hard-light">
                     Secured by Supabase. Powered by Gemini.
                 </p>
             </div>
