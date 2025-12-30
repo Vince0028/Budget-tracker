@@ -1,31 +1,27 @@
-
-import { GoogleGenAI, Type } from "@google/genai";
+import { Type } from "@google/genai";
 import { Transaction, TransactionType, Budget } from "../types";
-
-const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
+import { aiManager } from "./AIModelManager";
 
 export const parseReceiptImage = async (base64Image: string): Promise<Partial<Transaction>> => {
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+    const response = await aiManager.generateContent({
       contents: {
         parts: [
           { inlineData: { mimeType: 'image/jpeg', data: base64Image } },
           { text: "Analyze this receipt image. Extract the vendor name, total amount, date, and categorize the expense." }
         ]
       },
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            vendor: { type: Type.STRING, description: "Name of the merchant" },
-            amount: { type: Type.NUMBER, description: "Total numeric amount found" },
-            date: { type: Type.STRING, description: "Date in YYYY-MM-DD format" },
-            category: { type: Type.STRING, description: "One of: Food & Dining, Transportation, Housing, Utilities, Entertainment, Healthcare, Shopping, Personal Care, Education, Travel, Other" }
-          },
-          required: ["vendor", "amount", "date", "category"]
-        }
+    }, {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          vendor: { type: Type.STRING, description: "Name of the merchant" },
+          amount: { type: Type.NUMBER, description: "Total numeric amount found" },
+          date: { type: Type.STRING, description: "Date in YYYY-MM-DD format" },
+          category: { type: Type.STRING, description: "One of: Food & Dining, Transportation, Housing, Utilities, Entertainment, Healthcare, Shopping, Personal Care, Education, Travel, Other" }
+        },
+        required: ["vendor", "amount", "date", "category"]
       }
     });
 
@@ -48,16 +44,14 @@ export const parseReceiptImage = async (base64Image: string): Promise<Partial<Tr
 
 export const getSpendingAdvice = async (transactions: Transaction[], unallocated: number): Promise<string> => {
   const summary = transactions.slice(0, 30).map(t =>
-    `${t.date}: ${t.vendor} (${t.category}) - $${t.amount} [${t.type}]`
+    `${t.date}: ${t.vendor} (${t.category}) - ₱${t.amount} [${t.type}]`
   ).join('\n');
 
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: `History:\n${summary}\n\nCurrent Unallocated Funds: ₱${unallocated}\n\nProvide 3 witty tips. Address the unallocated amount if it is too high (suggest investing/saving) or negative (suggest cutting costs).`,
-      config: {
-        systemInstruction: "You are a smart, slightly quirky financial advisor. Use a direct, helpful, and slightly humorous tone. Keep advice actionable. Use Philippine Pesos (₱) for currency.",
-      },
+    const response = await aiManager.generateContent({
+      contents: `History:\n${summary}\n\nCurrent Unallocated Funds: ₱${unallocated}\n\nProvide 3 very short, straight-to-the-point actionable tips. No "witty intros" or fluff. Format as a simple bulleted list.`,
+    }, {
+      systemInstruction: "You are a concise financial advisor. You do not waste time with pleasantries. You give 3 direct, actionable tips based on the data. Max 1-2 sentences per tip.",
     });
     return response.text || "No insights available right now.";
   } catch (e) {
@@ -72,19 +66,17 @@ export const predictNextMonth = async (transactions: Transaction[]): Promise<{ p
   const total = expenses.reduce((acc, t) => acc + t.amount, 0);
 
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+    const response = await aiManager.generateContent({
       contents: `The user spent ₱${total} over ${expenses.length} transactions. Predict next month's total spending.`,
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            prediction: { type: Type.NUMBER, description: "Predicted amount" },
-            reasoning: { type: Type.STRING, description: "Brief explanation" }
-          },
-          required: ["prediction", "reasoning"]
-        }
+    }, {
+      responseMimeType: 'application/json',
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          prediction: { type: Type.NUMBER, description: "Predicted amount" },
+          reasoning: { type: Type.STRING, description: "Brief explanation" }
+        },
+        required: ["prediction", "reasoning"]
       }
     });
     const data = JSON.parse(response.text || "{}");
@@ -100,20 +92,18 @@ export const predictNextMonth = async (transactions: Transaction[]): Promise<{ p
 
 export const analyzeEverything = async (transactions: Transaction[], budgets: Budget[]): Promise<string> => {
   const transactionSummary = transactions.map(t =>
-    `${t.date}: ${t.vendor} (${t.category}) - $${t.amount} [${t.type}]`
+    `${t.date}: ${t.vendor} (${t.category}) - ₱${t.amount} [${t.type}]`
   ).join('\n');
 
   const budgetSummary = budgets.map(b =>
-    `${b.category}: $${b.limit}`
+    `${b.category}: ₱${b.limit}`
   ).join('\n');
 
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+    const response = await aiManager.generateContent({
       contents: `Analyze the following financial data and provide a comprehensive report.\n\nTransactions:\n${transactionSummary}\n\nBudgets:\n${budgetSummary}\n\nProvide insights on spending habits, budget adherence, and potential savings.`,
-      config: {
-        systemInstruction: "You are a detailed and insightful financial analyst. Provide a structured report with markdown formatting. Use Philippine Pesos (₱) for all monetary values.",
-      }
+    }, {
+      systemInstruction: "You are a detailed and insightful financial analyst. Provide a structured report with markdown formatting. Use Philippine Pesos (₱) for all monetary values.",
     });
     return response.text || "Unable to generate analysis.";
   } catch (error) {
