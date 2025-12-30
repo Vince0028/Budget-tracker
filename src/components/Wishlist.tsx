@@ -90,6 +90,7 @@ const Wishlist: React.FC<Props> = ({ wishlist, unallocatedCash, onAdd, onDelete,
         link: '',
         note: ''
     });
+    const [filter, setFilter] = useState<'all' | 'high' | 'medium' | 'low'>('all');
 
     const [confirmState, setConfirmState] = useState<{ type: 'delete' | 'edit' | 'promote' | null; id: string | null; data?: WishlistItem }>({ type: null, id: null });
 
@@ -174,6 +175,10 @@ const Wishlist: React.FC<Props> = ({ wishlist, unallocatedCash, onAdd, onDelete,
         high: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
     };
 
+    const filteredWishlist = wishlist.filter(item => filter === 'all' || item.priority === filter);
+    const totalWishlistValue = wishlist.reduce((acc, item) => acc + item.amount, 0);
+    const filteredValue = filteredWishlist.reduce((acc, item) => acc + item.amount, 0);
+
     return (
         <div className="space-y-6 pb-20">
             <ConfirmModal
@@ -201,26 +206,54 @@ const Wishlist: React.FC<Props> = ({ wishlist, unallocatedCash, onAdd, onDelete,
             {/* Header Banner - Unallocated Cash */}
             <div className="bg-stone-900 dark:bg-stone-100 text-stone-100 dark:text-stone-900 p-8 rounded-3xl relative overflow-hidden shadow-xl">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-stone-800 dark:bg-stone-200 rounded-full blur-3xl -mr-32 -mt-32 opacity-50"></div>
-                <div className="relative z-10">
-                    <div className="flex items-center gap-3 mb-2 opacity-80">
-                        <Target size={20} />
-                        <span className="text-xs font-black uppercase tracking-widest">Available to Assign</span>
+                <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+                    <div>
+                        <div className="flex items-center gap-3 mb-2 opacity-80">
+                            <Target size={20} />
+                            <span className="text-xs font-black uppercase tracking-widest">Available to Assign</span>
+                        </div>
+                        <h1 className="text-5xl font-black tracking-tighter mb-2">
+                            ₱{unallocatedCash.toLocaleString()}
+                        </h1>
+                        <p className="text-sm font-medium opacity-70 max-w-md">
+                            Pick an item from your wishlist below to fund it!
+                        </p>
                     </div>
-                    <h1 className="text-5xl font-black tracking-tighter mb-4">
-                        ₱{unallocatedCash.toLocaleString()}
-                    </h1>
-                    <p className="text-sm font-medium opacity-70 max-w-md">
-                        You have this much unassigned cash. Pick an item from your wishlist below to fund it!
-                    </p>
+                    <div className="flex flex-col items-end gap-1 opacity-90">
+                        <span className="text-[10px] uppercase font-bold tracking-widest">Total Wishlist Value</span>
+                        <span className="text-2xl font-black">₱{totalWishlistValue.toLocaleString()}</span>
+                        {filter !== 'all' && (
+                            <span className="text-xs font-medium">({filter}: ₱{filteredValue.toLocaleString()})</span>
+                        )}
+                    </div>
                 </div>
             </div>
 
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                 <h2 className="text-2xl font-black text-stone-800 dark:text-stone-100 tracking-tight flex items-center gap-2">
                     <Gift className="text-stone-400" />
                     Wishlist
                 </h2>
-                <QButton onClick={() => { setEditingId(null); setNewItem({ name: '', amount: 0, priority: 'medium', link: '', note: '' }); setShowAdd(true); }} icon={Plus}>Add Item</QButton>
+
+                <div className="flex gap-2 p-1 bg-stone-200 dark:bg-stone-800 rounded-xl overflow-hidden">
+                    {(['all', 'high', 'medium', 'low'] as const).map((f) => (
+                        <button
+                            key={f}
+                            onClick={() => setFilter(f)}
+                            className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all
+                                ${filter === f
+                                    ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-100 shadow-sm'
+                                    : 'text-stone-500 hover:text-stone-700 dark:hover:text-stone-300'
+                                }`}
+                        >
+                            {f}
+                        </button>
+                    ))}
+                </div>
+
+                <div className="flex-grow md:flex-grow-0">
+                    <QButton onClick={() => { setEditingId(null); setNewItem({ name: '', amount: 0, priority: 'medium', link: '', note: '' }); setShowAdd(true); }} icon={Plus}>Add Item</QButton>
+                </div>
             </div>
 
             {showAdd && (
@@ -283,17 +316,19 @@ const Wishlist: React.FC<Props> = ({ wishlist, unallocatedCash, onAdd, onDelete,
             )}
 
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                <SortableContext items={wishlist.map(w => w.id)} strategy={rectSortingStrategy}>
+                <SortableContext items={filteredWishlist.map(w => w.id)} strategy={rectSortingStrategy}>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {wishlist.length === 0 && !showAdd && (
+                        {filteredWishlist.length === 0 && !showAdd && (
                             <div className="col-span-full py-20 text-center text-stone-400">
                                 <ShoppingBag size={48} className="mx-auto mb-4 opacity-20" />
-                                <p className="font-bold">Your wishlist is empty.</p>
-                                <p className="text-sm">Add things you want to buy later.</p>
+                                <p className="font-bold">
+                                    {filter === 'all' ? "Your wishlist is empty." : `No ${filter} priority items.`}
+                                </p>
+                                {filter === 'all' && <p className="text-sm">Add things you want to buy later.</p>}
                             </div>
                         )}
 
-                        {wishlist.map(item => (
+                        {filteredWishlist.map(item => (
                             <SortableWishlistCard
                                 key={item.id}
                                 item={item}
@@ -308,7 +343,7 @@ const Wishlist: React.FC<Props> = ({ wishlist, unallocatedCash, onAdd, onDelete,
                                             </span>
                                             <h3 className="font-black text-xl text-stone-900 dark:text-stone-100 leading-none tracking-tight">{item.name}</h3>
                                         </div>
-                                        <div className="text-lg font-black text-stone-800 dark:text-stone-200 whitespace-nowrap">
+                                        <div className="text-sm md:text-lg font-black text-stone-800 dark:text-stone-200 whitespace-nowrap">
                                             ₱{item.amount.toLocaleString()}
                                         </div>
                                     </div>
