@@ -115,7 +115,7 @@ const SmartAdvisor: React.FC<Props> = ({ transactions, budgets }) => {
                     </div>
                 )}
             </QCard>
-            <QCard title="Deep Analysis" className="md:col-span-2 bg-gradient-to-br from-stone-800 to-stone-900 text-stone-100 border-none shadow-xl">
+            <QCard title="Deep Analysis" titleClassName="!text-stone-100 dark:!text-stone-100 !border-stone-600" className="md:col-span-2 bg-gradient-to-br from-stone-800 to-stone-900 text-stone-100 border-none shadow-xl">
                 <div className="flex flex-col md:flex-row gap-6 items-center">
                     <div className="flex-1">
                         <p className="text-stone-300 text-sm mb-4 leading-relaxed">
