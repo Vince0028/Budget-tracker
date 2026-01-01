@@ -80,7 +80,7 @@ const SortableBudgetCard = ({ budget, children, deleteDeadline, onUndo }: { budg
 };
 
 const Budgets: React.FC<Props> = ({ budgets, transactions, onUpdateBudgets, onDeleteBudget, pendingDeletes, onUndoDelete }) => {
-    const [newBudget, setNewBudget] = useState<Partial<Budget>>({ category: EXPENSE_CATEGORIES[0], limit: 100, color: THEME_COLORS[0] });
+    const [newBudget, setNewBudget] = useState<Partial<Budget> & { limit: number | string }>({ category: EXPENSE_CATEGORIES[0], limit: '', color: THEME_COLORS[0] });
     const [customCategory, setCustomCategory] = useState('');
     const [showAdd, setShowAdd] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -124,7 +124,7 @@ const Budgets: React.FC<Props> = ({ budgets, transactions, onUpdateBudgets, onDe
 
         setShowAdd(false);
         setEditingId(null);
-        setNewBudget({ category: EXPENSE_CATEGORIES[0], limit: 100, color: THEME_COLORS[0] });
+        setNewBudget({ category: EXPENSE_CATEGORIES[0], limit: '', color: THEME_COLORS[0] });
         setCustomCategory('');
     };
 
@@ -244,8 +244,9 @@ const Budgets: React.FC<Props> = ({ budgets, transactions, onUpdateBudgets, onDe
                             <QInput
                                 label="Assign Amount (₱)"
                                 type="number"
+                                placeholder="0"
                                 value={newBudget.limit}
-                                onChange={e => setNewBudget({ ...newBudget, limit: Number(e.target.value) })}
+                                onChange={e => setNewBudget({ ...newBudget, limit: e.target.value === '' ? '' : Number(e.target.value) })}
                             />
                             <QSelect
                                 label="Marker"
@@ -259,7 +260,7 @@ const Budgets: React.FC<Props> = ({ budgets, transactions, onUpdateBudgets, onDe
                                 <QButton variant="ghost" onClick={() => {
                                     setShowAdd(false);
                                     setEditingId(null);
-                                    setNewBudget({ category: EXPENSE_CATEGORIES[0], limit: 100, color: THEME_COLORS[0] });
+                                    setNewBudget({ category: EXPENSE_CATEGORIES[0], limit: '', color: THEME_COLORS[0] });
                                 }}>Cancel</QButton>
                             </div>
                         </div>

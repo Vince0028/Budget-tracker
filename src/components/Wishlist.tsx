@@ -83,9 +83,9 @@ const SortableWishlistCard = ({ item, children, deleteDeadline, onUndo }: { item
 const Wishlist: React.FC<Props> = ({ wishlist, unallocatedCash, onAdd, onDelete, onPromote, onUpdateWishlist, pendingDeletes, onUndoDelete }) => {
     const [showAdd, setShowAdd] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
-    const [newItem, setNewItem] = useState<Partial<WishlistItem>>({
+    const [newItem, setNewItem] = useState<Partial<WishlistItem> & { amount: number | string }>({
         name: '',
-        amount: 0,
+        amount: '',
         priority: 'medium',
         link: '',
         note: ''
@@ -163,7 +163,7 @@ const Wishlist: React.FC<Props> = ({ wishlist, unallocatedCash, onAdd, onDelete,
                     note: newItem.note
                 });
             }
-            setNewItem({ name: '', amount: 0, priority: 'medium', link: '', note: '' });
+            setNewItem({ name: '', amount: '', priority: 'medium', link: '', note: '' });
             setShowAdd(false);
             setEditingId(null);
         }
@@ -252,7 +252,7 @@ const Wishlist: React.FC<Props> = ({ wishlist, unallocatedCash, onAdd, onDelete,
                 </div>
 
                 <div className="flex-grow md:flex-grow-0">
-                    <QButton onClick={() => { setEditingId(null); setNewItem({ name: '', amount: 0, priority: 'medium', link: '', note: '' }); setShowAdd(true); }} icon={Plus}>Add Item</QButton>
+                    <QButton onClick={() => { setEditingId(null); setNewItem({ name: '', amount: '', priority: 'medium', link: '', note: '' }); setShowAdd(true); }} icon={Plus}>Add Item</QButton>
                 </div>
             </div>
 
@@ -270,8 +270,9 @@ const Wishlist: React.FC<Props> = ({ wishlist, unallocatedCash, onAdd, onDelete,
                             <QInput
                                 label="Estimated Price"
                                 type="number"
+                                placeholder="0"
                                 value={newItem.amount}
-                                onChange={e => setNewItem({ ...newItem, amount: Number(e.target.value) })}
+                                onChange={e => setNewItem({ ...newItem, amount: e.target.value === '' ? '' : Number(e.target.value) })}
                                 required
                             />
                         </div>
