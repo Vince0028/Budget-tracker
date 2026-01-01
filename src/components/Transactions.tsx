@@ -111,6 +111,28 @@ const SortableTransactionRow = ({ transaction, onEdit, onDelete, deleteDeadline,
   );
 };
 
+const months = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"
+];
+
+const FilterSelect = ({ value, onChange, options, bold = false }: any) => (
+  <div className="relative group">
+    <select
+      value={value}
+      onChange={onChange}
+      className={`appearance-none bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 hover:border-stone-300 dark:hover:border-stone-600 rounded-lg px-3 py-1.5 pr-8 text-xs font-medium text-stone-600 dark:text-stone-300 outline-none transition-all cursor-pointer shadow-sm ${bold ? 'font-bold' : ''}`}
+    >
+      {options}
+    </select>
+    <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-stone-400">
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="6 9 12 15 18 9"></polyline>
+      </svg>
+    </div>
+  </div>
+);
+
 const Transactions: React.FC<Props> = ({ transactions, budgets, onAdd, onDelete, onReorder, pendingDeletes, onUndoDelete }) => {
   const [filter, setFilter] = useState('');
   const [isAdding, setIsAdding] = useState(false);
@@ -212,10 +234,28 @@ const Transactions: React.FC<Props> = ({ transactions, budgets, onAdd, onDelete,
     setConfirmState({ type: null, id: null });
   };
 
-  const filteredTransactions = transactions.filter(t =>
-    t.vendor.toLowerCase().includes(filter.toLowerCase()) ||
-    t.category.toLowerCase().includes(filter.toLowerCase())
-  );
+  // Filter States
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState<number | 'all'>('all');
+  const [selectedType, setSelectedType] = useState<TransactionType | 'all'>('all');
+
+  // Get available years
+  const availableYears = React.useMemo(() => {
+    const years = new Set(transactions.map(t => new Date(t.date).getFullYear()));
+    years.add(new Date().getFullYear());
+    return Array.from(years).sort((a, b) => b - a);
+  }, [transactions]);
+
+  const filteredTransactions = transactions.filter(t => {
+    const date = new Date(t.date);
+    const yearMatch = date.getFullYear() === selectedYear;
+    const monthMatch = selectedMonth === 'all' || date.getMonth() === selectedMonth;
+    const typeMatch = selectedType === 'all' || t.type === selectedType;
+    const searchMatch = t.vendor.toLowerCase().includes(filter.toLowerCase()) ||
+      t.category.toLowerCase().includes(filter.toLowerCase());
+
+    return yearMatch && monthMatch && typeMatch && searchMatch;
+  });
 
   // Group by date
   const groupedTransactions = filteredTransactions.reduce((groups, transaction) => {
@@ -384,14 +424,56 @@ const Transactions: React.FC<Props> = ({ transactions, budgets, onAdd, onDelete,
         </QCard>
       )}
 
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" size={18} />
-        <input
-          className="w-full pl-10 pr-4 py-3 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl shadow-inner outline-none focus:ring-2 ring-stone-200 dark:ring-stone-800"
-          placeholder="Search transactions..."
-          value={filter}
-          onChange={e => setFilter(e.target.value)}
-        />
+      <div className="flex flex-col lg:flex-row gap-4">
+        <div className="flex gap-2 items-center flex-wrap">
+          <FilterSelect
+            value={selectedType}
+            onChange={(e: any) => setSelectedType(e.target.value)}
+            options={
+              <>
+                <option value="all">All Types</option>
+                <option value={TransactionType.INCOME}>Income</option>
+                <option value={TransactionType.EXPENSE}>Expense</option>
+              </>
+            }
+          />
+
+          <div className="w-[1px] h-6 bg-stone-200 dark:bg-stone-700 mx-1 hidden sm:block"></div>
+
+          <FilterSelect
+            value={selectedMonth}
+            onChange={(e: any) => setSelectedMonth(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+            options={
+              <>
+                <option value="all">All Months</option>
+                {months.map((m, i) => (
+                  <option key={m} value={i}>{m}</option>
+                ))}
+              </>
+            }
+          />
+
+          <FilterSelect
+            value={selectedYear}
+            onChange={(e: any) => setSelectedYear(Number(e.target.value))}
+            bold={true}
+            options={
+              availableYears.map(year => (
+                <option key={year} value={year}>{year}</option>
+              ))
+            }
+          />
+        </div>
+
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" size={18} />
+          <input
+            className="w-full pl-10 pr-4 py-2 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-lg shadow-sm outline-none focus:ring-2 ring-stone-200 dark:ring-stone-800 transition-all"
+            placeholder="Search transactions..."
+            value={filter}
+            onChange={e => setFilter(e.target.value)}
+          />
+        </div>
       </div>
 
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
