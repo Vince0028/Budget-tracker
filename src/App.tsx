@@ -259,13 +259,43 @@ const App: React.FC = () => {
   const addTransaction = async (t: Transaction) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
+      // 1. Check if we need to auto-create a budget (Allocation)
+      let newBudget: Budget | null = null;
+      if (t.type === TransactionType.EXPENSE) {
+        const existingBudget = state.budgets.find(b => b.category === t.category);
+        if (!existingBudget) {
+          // No allocation exists for this category, so we create one automatically.
+          newBudget = {
+            id: crypto.randomUUID(),
+            category: t.category,
+            limit: t.amount, // Set limit equal to the first expense amount
+            color: THEME_COLORS[state.budgets.length % THEME_COLORS.length] || '#78716c',
+          };
+
+          // Persist the new budget
+          const { error: budgetError } = await supabase.from('budgets').insert({
+            ...newBudget,
+            user_id: user.id
+          });
+
+          if (budgetError) {
+            console.error("Error auto-creating budget:", budgetError);
+            // We can choose to halt or continue. Let's continue but log it.
+            newBudget = null;
+          }
+        }
+      }
+
+      // 2. Persist the Transaction
       const { error } = await supabase.from('transactions').upsert({
         ...t,
         user_id: user.id,
         order_index: 0 // New transactions at top
       });
+
       if (error) console.error("Error saving transaction:", error);
       else {
+        // 3. Update Local State
         setState(prev => {
           const exists = prev.transactions.some(existing => existing.id === t.id);
           let newTransactions = exists
@@ -281,7 +311,9 @@ const App: React.FC = () => {
 
           return {
             ...prev,
-            transactions: newTransactions
+            transactions: newTransactions,
+            // If we created a new budget, add it to state immediately
+            budgets: newBudget ? [...prev.budgets, newBudget] : prev.budgets
           };
         });
       }
