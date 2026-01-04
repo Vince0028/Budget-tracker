@@ -3,6 +3,7 @@ import { WishlistItem } from '../types';
 import { Plus, Trash2, ExternalLink, ArrowUpRight, Gift, ShoppingBag, Target, Pencil, GripVertical } from 'lucide-react';
 import { QButton, QCard, QInput } from './UI/QuirkyComponents';
 import ConfirmModal from './ConfirmModal';
+import Modal from './UI/Modal';
 import { DndContext, closestCenter, KeyboardSensor, MouseSensor, TouchSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, rectSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -256,65 +257,70 @@ const Wishlist: React.FC<Props> = ({ wishlist, unallocatedCash, onAdd, onDelete,
                 </div>
             </div>
 
-            {showAdd && (
-                <QCard title={editingId ? "Edit Wish" : "Add New Wish"} className="animate-in fade-in slide-in-from-top-4">
-                    <form onSubmit={handleSubmit} className="space-y-4 pt-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <QInput
-                                label="Item Name"
-                                value={newItem.name}
-                                onChange={e => setNewItem({ ...newItem, name: e.target.value })}
-                                placeholder="e.g. New Headphones"
-                                required
-                            />
-                            <QInput
-                                label="Estimated Price"
-                                type="number"
-                                placeholder="0"
-                                value={newItem.amount}
-                                onChange={e => setNewItem({ ...newItem, amount: e.target.value === '' ? '' : Number(e.target.value) })}
-                                required
-                            />
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Priority</label>
-                                <div className="flex gap-2">
-                                    {(['low', 'medium', 'high'] as const).map(p => (
-                                        <button
-                                            type="button"
-                                            key={p}
-                                            onClick={() => setNewItem({ ...newItem, priority: p })}
-                                            className={`flex-1 py-2 rounded-lg text-xs font-bold uppercase tracking-wider border-2 transition-all
-                                    ${newItem.priority === p
-                                                    ? 'border-stone-800 bg-stone-800 text-stone-100 dark:border-stone-100 dark:bg-stone-100 dark:text-stone-900'
-                                                    : 'border-stone-200 text-stone-400 hover:border-stone-300'}`}
-                                        >
-                                            {p}
-                                        </button>
-                                    ))}
-                                </div>
+            <Modal
+                isOpen={showAdd}
+                onClose={() => {
+                    setShowAdd(false);
+                    setEditingId(null);
+                }}
+                title={editingId ? "Edit Wish" : "Add New Wish"}
+            >
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <QInput
+                            label="Item Name"
+                            value={newItem.name}
+                            onChange={e => setNewItem({ ...newItem, name: e.target.value })}
+                            placeholder="e.g. New Headphones"
+                            required
+                        />
+                        <QInput
+                            label="Estimated Price"
+                            type="number"
+                            placeholder="0"
+                            value={newItem.amount}
+                            onChange={e => setNewItem({ ...newItem, amount: e.target.value === '' ? '' : Number(e.target.value) })}
+                            required
+                        />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Priority</label>
+                            <div className="flex gap-2">
+                                {(['low', 'medium', 'high'] as const).map(p => (
+                                    <button
+                                        type="button"
+                                        key={p}
+                                        onClick={() => setNewItem({ ...newItem, priority: p })}
+                                        className={`flex-1 py-2 rounded-lg text-xs font-bold uppercase tracking-wider border-2 transition-all
+                                ${newItem.priority === p
+                                                ? 'border-stone-800 bg-stone-800 text-stone-100 dark:border-stone-100 dark:bg-stone-100 dark:text-stone-900'
+                                                : 'border-stone-200 text-stone-400 hover:border-stone-300'}`}
+                                    >
+                                        {p}
+                                    </button>
+                                ))}
                             </div>
-                            <QInput
-                                label="Link (Optional)"
-                                value={newItem.link}
-                                onChange={e => setNewItem({ ...newItem, link: e.target.value })}
-                                placeholder="https://..."
-                            />
                         </div>
-                        <div className="flex justify-end gap-3 pt-4">
-                            <button
-                                type="button"
-                                onClick={() => setShowAdd(false)}
-                                className="px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-widest text-stone-500 hover:bg-stone-100 dark:hover:bg-stone-800"
-                            >
-                                Cancel
-                            </button>
-                            <QButton type="submit">{editingId ? 'Update Wish' : 'Add to List'}</QButton>
-                        </div>
-                    </form>
-                </QCard>
-            )}
+                        <QInput
+                            label="Link (Optional)"
+                            value={newItem.link}
+                            onChange={e => setNewItem({ ...newItem, link: e.target.value })}
+                            placeholder="https://..."
+                        />
+                    </div>
+                    <div className="flex justify-end gap-3 pt-4">
+                        <button
+                            type="button"
+                            onClick={() => setShowAdd(false)}
+                            className="px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-widest text-stone-500 hover:bg-stone-100 dark:hover:bg-stone-800"
+                        >
+                            Cancel
+                        </button>
+                        <QButton type="submit">{editingId ? 'Update Wish' : 'Add to List'}</QButton>
+                    </div>
+                </form>
+            </Modal>
 
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                 <SortableContext items={filteredWishlist.map(w => w.id)} strategy={rectSortingStrategy}>

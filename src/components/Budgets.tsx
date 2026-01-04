@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Budget, Transaction, TransactionType, EXPENSE_CATEGORIES, THEME_COLORS } from '../types';
 import { QButton, QInput, QSelect, QCard } from './UI/QuirkyComponents';
 import ConfirmModal from './ConfirmModal';
+import Modal from './UI/Modal';
 import { Trash2, AlertTriangle, Coins, PlusCircle, Pencil, GripVertical } from 'lucide-react';
 import { DndContext, closestCenter, KeyboardSensor, MouseSensor, TouchSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, rectSortingStrategy } from '@dnd-kit/sortable';
@@ -216,57 +217,61 @@ const Budgets: React.FC<Props> = ({ budgets, transactions, onUpdateBudgets, onDe
                 </div>
             </div>
 
-            {showAdd && (
-                <div className="animate-in zoom-in-95 duration-200">
-                    <QCard title={editingId ? "Edit Allocation" : "Assign Income"} className="bg-stone-50 dark:bg-stone-900 border-dashed border-2">
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                            <QSelect
-                                label="Category"
-                                value={newBudget.category}
-                                onChange={e => {
-                                    setNewBudget({ ...newBudget, category: e.target.value });
-                                    if (e.target.value !== 'Other') setCustomCategory('');
-                                }}
-                            >
-                                {EXPENSE_CATEGORIES.map(c => (
-                                    <option key={c} value={c}>{c}</option>
-                                ))}
-                            </QSelect>
-                            {newBudget.category === 'Other' && (
-                                <QInput
-                                    label="Custom Category"
-                                    placeholder="Name your category"
-                                    value={customCategory}
-                                    onChange={e => setCustomCategory(e.target.value)}
-                                    autoFocus
-                                />
-                            )}
-                            <QInput
-                                label="Assign Amount (₱)"
-                                type="number"
-                                placeholder="0"
-                                value={newBudget.limit}
-                                onChange={e => setNewBudget({ ...newBudget, limit: e.target.value === '' ? '' : Number(e.target.value) })}
-                            />
-                            <QSelect
-                                label="Marker"
-                                value={newBudget.color}
-                                onChange={e => setNewBudget({ ...newBudget, color: e.target.value })}
-                            >
-                                {THEME_COLORS.map((c, i) => <option key={i} value={c}>Palette {i + 1}</option>)}
-                            </QSelect>
-                            <div className="flex gap-2">
-                                <QButton onClick={handleAdd} className="flex-1">{editingId ? 'Update' : 'Assign'}</QButton>
-                                <QButton variant="ghost" onClick={() => {
-                                    setShowAdd(false);
-                                    setEditingId(null);
-                                    setNewBudget({ category: EXPENSE_CATEGORIES[0], limit: '', color: THEME_COLORS[0] });
-                                }}>Cancel</QButton>
-                            </div>
-                        </div>
-                    </QCard>
+            <Modal
+                isOpen={showAdd}
+                onClose={() => {
+                    setShowAdd(false);
+                    setEditingId(null);
+                    setNewBudget({ category: EXPENSE_CATEGORIES[0], limit: '', color: THEME_COLORS[0] });
+                }}
+                title={editingId ? "Edit Allocation" : "Assign Income"}
+            >
+                <div className="grid grid-cols-1 gap-4">
+                    <QSelect
+                        label="Category"
+                        value={newBudget.category}
+                        onChange={e => {
+                            setNewBudget({ ...newBudget, category: e.target.value });
+                            if (e.target.value !== 'Other') setCustomCategory('');
+                        }}
+                    >
+                        {EXPENSE_CATEGORIES.map(c => (
+                            <option key={c} value={c}>{c}</option>
+                        ))}
+                    </QSelect>
+                    {newBudget.category === 'Other' && (
+                        <QInput
+                            label="Custom Category"
+                            placeholder="Name your category"
+                            value={customCategory}
+                            onChange={e => setCustomCategory(e.target.value)}
+                            autoFocus
+                        />
+                    )}
+                    <QInput
+                        label="Assign Amount (₱)"
+                        type="number"
+                        placeholder="0"
+                        value={newBudget.limit}
+                        onChange={e => setNewBudget({ ...newBudget, limit: e.target.value === '' ? '' : Number(e.target.value) })}
+                    />
+                    <QSelect
+                        label="Marker"
+                        value={newBudget.color}
+                        onChange={e => setNewBudget({ ...newBudget, color: e.target.value })}
+                    >
+                        {THEME_COLORS.map((c, i) => <option key={i} value={c}>Palette {i + 1}</option>)}
+                    </QSelect>
+                    <div className="flex gap-2 justify-end mt-4">
+                        <QButton variant="ghost" onClick={() => {
+                            setShowAdd(false);
+                            setEditingId(null);
+                            setNewBudget({ category: EXPENSE_CATEGORIES[0], limit: '', color: THEME_COLORS[0] });
+                        }}>Cancel</QButton>
+                        <QButton onClick={handleAdd}>{editingId ? 'Update' : 'Assign'}</QButton>
+                    </div>
                 </div>
-            )}
+            </Modal>
 
             {/* Categories Grid */}
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>

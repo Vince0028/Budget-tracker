@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Transaction, TransactionType, CATEGORIES, EXPENSE_CATEGORIES, INCOME_CATEGORIES, Budget } from '../types';
 import { QButton, QInput, QSelect, QCard, QBadge } from './UI/QuirkyComponents';
 import ConfirmModal from './ConfirmModal';
+import Modal from './UI/Modal';
 import { Trash2, Plus, Upload, Search, FileText, AlertCircle, Pencil, GripVertical } from 'lucide-react';
 import { parseReceiptImage } from '../services/geminiService';
 import { DndContext, closestCenter, KeyboardSensor, MouseSensor, TouchSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
@@ -338,91 +339,87 @@ const Transactions: React.FC<Props> = ({ transactions, budgets, onAdd, onDelete,
         variant={confirmState.type === 'delete' ? 'danger' : 'primary'}
       />
 
-      {isAdding && (
-        <QCard className="animate-in slide-in-from-top-4 fade-in duration-300 border-l-4 border-l-stone-800 dark:border-l-stone-400">
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <QInput
-              label="Date"
-              type="date"
-              value={newTrans.date}
-              onChange={e => setNewTrans({ ...newTrans, date: e.target.value })}
-              required
-            />
-            <QSelect
-              label="Type"
-              value={newTrans.type}
-              onChange={e => {
-                const newType = e.target.value as TransactionType;
-                const defaultCategory = newType === TransactionType.INCOME ? INCOME_CATEGORIES[0] : EXPENSE_CATEGORIES[0];
-                setNewTrans({ ...newTrans, type: newType, category: defaultCategory });
-              }}
-            >
-              <option value={TransactionType.EXPENSE}>Expense</option>
-              <option value={TransactionType.INCOME}>Income</option>
-            </QSelect>
-            <QInput
-              label={newTrans.type === TransactionType.INCOME ? "Source" : "Vendor"}
-              placeholder="e.g. Coffee Shop"
-              value={newTrans.vendor || ''}
-              onChange={e => setNewTrans({ ...newTrans, vendor: e.target.value })}
-              required
-            />
-            <QInput
-              label="Amount"
-              type="number"
-              step="0.01"
-              placeholder="0.00"
-              value={newTrans.amount || ''}
-              onChange={e => setNewTrans({ ...newTrans, amount: Number(e.target.value) })}
-              required
-            />
-            <QSelect
-              label="Category"
-              value={newTrans.category}
-              onChange={e => {
-                setNewTrans({ ...newTrans, category: e.target.value });
-                if (e.target.value !== 'Other') setCustomCategory('');
-              }}
-            >
-              {(newTrans.type === TransactionType.INCOME ? INCOME_CATEGORIES : allExpenseCategories).map(c =>
-                <option key={c} value={c}>{c}</option>
-              )}
-            </QSelect>
-            {newTrans.category === 'Other' && (
-              <div className="md:col-span-2 animate-in fade-in slide-in-from-top-2">
-                <QInput
-                  label="Custom Category"
-                  placeholder="Name your category"
-                  value={customCategory}
-                  onChange={e => setCustomCategory(e.target.value)}
-                  autoFocus
-                />
-              </div>
+      <Modal
+        isOpen={isAdding}
+        onClose={() => {
+          setIsAdding(false);
+          setEditingId(null);
+        }}
+        title={editingId ? "Edit Transaction" : "Add Transaction"}
+      >
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4">
+          <QInput
+            label="Date"
+            type="date"
+            value={newTrans.date}
+            onChange={e => setNewTrans({ ...newTrans, date: e.target.value })}
+            required
+          />
+          <QSelect
+            label="Type"
+            value={newTrans.type}
+            onChange={e => {
+              const newType = e.target.value as TransactionType;
+              const defaultCategory = newType === TransactionType.INCOME ? INCOME_CATEGORIES[0] : EXPENSE_CATEGORIES[0];
+              setNewTrans({ ...newTrans, type: newType, category: defaultCategory });
+            }}
+          >
+            <option value={TransactionType.EXPENSE}>Expense</option>
+            <option value={TransactionType.INCOME}>Income</option>
+          </QSelect>
+          <QInput
+            label={newTrans.type === TransactionType.INCOME ? "Source" : "Vendor"}
+            placeholder="e.g. Coffee Shop"
+            value={newTrans.vendor || ''}
+            onChange={e => setNewTrans({ ...newTrans, vendor: e.target.value })}
+            required
+          />
+          <QInput
+            label="Amount"
+            type="number"
+            step="0.01"
+            placeholder="0.00"
+            value={newTrans.amount || ''}
+            onChange={e => setNewTrans({ ...newTrans, amount: Number(e.target.value) })}
+            required
+          />
+          <QSelect
+            label="Category"
+            value={newTrans.category}
+            onChange={e => {
+              setNewTrans({ ...newTrans, category: e.target.value });
+              if (e.target.value !== 'Other') setCustomCategory('');
+            }}
+          >
+            {(newTrans.type === TransactionType.INCOME ? INCOME_CATEGORIES : allExpenseCategories).map(c =>
+              <option key={c} value={c}>{c}</option>
             )}
-            {editingId && (
-              <div className="md:col-span-2 flex justify-between mt-2 pt-2 border-t border-stone-200 dark:border-stone-700">
-                <button
-                  type="button"
-                  onClick={() => setConfirmState({ type: 'delete', id: editingId })}
-                  className="px-4 py-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg text-sm font-bold transition-colors flex items-center gap-2"
-                >
-                  <Trash2 size={16} /> Delete
-                </button>
-                <div className="flex gap-2">
-                  <QButton type="button" variant="ghost" onClick={() => { setIsAdding(false); setEditingId(null); }}>Cancel</QButton>
-                  <QButton type="submit">Update Transaction</QButton>
-                </div>
-              </div>
-            )}
-            {!editingId && (
-              <div className="md:col-span-2 flex justify-end mt-2 gap-2">
-                <QButton type="button" variant="ghost" onClick={() => setIsAdding(false)}>Cancel</QButton>
-                <QButton type="submit">Save Transaction</QButton>
-              </div>
-            )}
-          </form>
-        </QCard>
-      )}
+          </QSelect>
+          {newTrans.category === 'Other' && (
+            <div className="animate-in fade-in slide-in-from-top-2">
+              <QInput
+                label="Custom Category"
+                placeholder="Name your category"
+                value={customCategory}
+                onChange={e => setCustomCategory(e.target.value)}
+                autoFocus
+              />
+            </div>
+          )}
+          {editingId && (
+            <div className="flex justify-end gap-2 mt-2 pt-2 border-t border-stone-200 dark:border-stone-700">
+              <QButton type="button" variant="ghost" onClick={() => { setIsAdding(false); setEditingId(null); }}>Cancel</QButton>
+              <QButton type="submit">Update</QButton>
+            </div>
+          )}
+          {!editingId && (
+            <div className="flex justify-end mt-2 gap-2">
+              <QButton type="button" variant="ghost" onClick={() => setIsAdding(false)}>Cancel</QButton>
+              <QButton type="submit">Save</QButton>
+            </div>
+          )}
+        </form>
+      </Modal>
 
       <div className="flex flex-col lg:flex-row gap-4">
         <div className="flex gap-2 items-center flex-wrap">
