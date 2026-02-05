@@ -141,7 +141,7 @@ const App: React.FC = () => {
         user: profile ? { name: profile.name, email: profile.email, currency: profile.currency } : prev.user
       }));
 
-      // Check for empty state to trigger tutorial
+
       if ((!transactions || transactions.length === 0) && (!budgets || budgets.length === 0)) {
         // We can also check localStorage to see if they've already seen it, but "detection that user still has not put anything" creates a natural guard.
         // If they add data, this check fails next time.
