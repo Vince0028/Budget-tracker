@@ -1,20 +1,31 @@
 
 import React, { useState, useEffect } from 'react';
 import { Transaction, TransactionType, Budget } from '../types';
-import { getSpendingAdvice, predictNextMonth, analyzeEverything } from '../services/geminiService';
+import { getSpendingAdvice, predictNextMonth, analyzeEverything, SpendingAdviceResponse, SpendingForecastResponse, FinancialAnalysisResponse } from '../services/geminiService';
 import { QCard, QButton } from './UI/QuirkyComponents';
-import { Sparkles, TrendingUp, Lightbulb, BrainCircuit, Star } from 'lucide-react';
+import { Sparkles, TrendingUp, BrainCircuit, Star } from 'lucide-react';
 
 interface Props {
     transactions: Transaction[];
     budgets: Budget[];
 }
 
+const renderBulletList = (items: string[], className = '') => (
+    <ul className={`space-y-2 ${className}`}>
+        {items.map((item, index) => (
+            <li key={index} className="flex gap-3 items-start">
+                <span className="mt-2 h-1.5 w-1.5 rounded-full bg-stone-500 shrink-0" />
+                <span>{item}</span>
+            </li>
+        ))}
+    </ul>
+);
+
 const SmartAdvisor: React.FC<Props> = ({ transactions, budgets }) => {
-    const [advice, setAdvice] = useState<string>('');
-    const [prediction, setPrediction] = useState<{ prediction: number, reasoning: string } | null>(null);
+    const [advice, setAdvice] = useState<SpendingAdviceResponse | null>(null);
+    const [prediction, setPrediction] = useState<SpendingForecastResponse | null>(null);
     const [loading, setLoading] = useState(false);
-    const [fullAnalysis, setFullAnalysis] = useState<string>('');
+    const [fullAnalysis, setFullAnalysis] = useState<FinancialAnalysisResponse | null>(null);
     const [analyzing, setAnalyzing] = useState(false);
 
     const totalIncome = transactions
@@ -65,7 +76,7 @@ const SmartAdvisor: React.FC<Props> = ({ transactions, budgets }) => {
                             <div className="h-8 w-32 bg-stone-200 dark:bg-stone-700 animate-pulse rounded mt-1" />
                         ) : prediction ? (
                             <div className="text-3xl font-black text-stone-900 dark:text-stone-100">
-                                ₱{prediction.prediction.toLocaleString()}
+                                ₱{prediction.estimate.toLocaleString()}
                             </div>
                         ) : (
                             <div className="text-3xl font-black text-stone-300 dark:text-stone-700">
@@ -75,7 +86,7 @@ const SmartAdvisor: React.FC<Props> = ({ transactions, budgets }) => {
                     </div>
                 </div>
                 <p className="text-sm text-stone-600 dark:text-stone-400 leading-relaxed italic border-l-2 border-stone-300 dark:border-stone-700 pl-4">
-                    {loading ? "Analyzing patterns..." : (prediction?.reasoning || "Click 'Generate Financial Insights' to view forecast.")}
+                    {loading ? "Analyzing patterns..." : (prediction ? `${prediction.basis} ${prediction.reasoning}` : "Click 'Generate Financial Insights' to view forecast.")}
                 </p>
             </QCard>
 
@@ -95,14 +106,20 @@ const SmartAdvisor: React.FC<Props> = ({ transactions, budgets }) => {
                             <p className="text-xs text-stone-400 mt-4">Powered by Gemini AI</p>
                         </div>
                     ) : (
-                        <div className="text-stone-700 dark:text-stone-300 text-sm leading-relaxed">
-                            <div className="whitespace-pre-line flex flex-col gap-4">
-                                {advice.split('\n').map((line, i) => line.trim() && (
-                                    <div key={i} className="flex gap-3 items-start group">
-                                        <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-stone-400 group-hover:bg-stone-800 transition-colors shrink-0" />
-                                        <span>{line.replace(/^[-*]\s*/, '')}</span>
-                                    </div>
-                                ))}
+                        <div className="space-y-4 text-stone-700 dark:text-stone-300 text-sm leading-relaxed">
+                            <div className="rounded-2xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800/60 p-4">
+                                <h4 className="text-[10px] uppercase tracking-[0.2em] font-black text-stone-400 mb-2">Quick Verdict</h4>
+                                <p className="text-base font-medium text-stone-800 dark:text-stone-100">{advice.quickVerdict}</p>
+                            </div>
+
+                            <div className="rounded-2xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800/60 p-4">
+                                <h4 className="text-[10px] uppercase tracking-[0.2em] font-black text-stone-400 mb-2">Biggest Leak</h4>
+                                <p>{advice.biggestLeak}</p>
+                            </div>
+
+                            <div className="rounded-2xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800/60 p-4">
+                                <h4 className="text-[10px] uppercase tracking-[0.2em] font-black text-stone-400 mb-2">Next Moves</h4>
+                                {advice.nextMoves.length > 0 ? renderBulletList(advice.nextMoves) : <p>No next moves returned.</p>}
                             </div>
                         </div>
                     )}
@@ -122,8 +139,36 @@ const SmartAdvisor: React.FC<Props> = ({ transactions, budgets }) => {
                             Unlock a comprehensive financial audit using all your transaction history and budget allocations.
                         </p>
                         {fullAnalysis ? (
-                            <div className="prose prose-invert prose-sm max-w-none bg-black/20 p-6 rounded-xl border border-white/10">
-                                <pre className="whitespace-pre-wrap font-sans text-stone-300">{fullAnalysis}</pre>
+                            <div className="space-y-4 text-stone-300 text-sm leading-relaxed">
+                                <div className="rounded-2xl border border-white/10 bg-black/20 p-4 md:p-5">
+                                    <h4 className="text-[10px] uppercase tracking-[0.2em] font-black text-stone-400 mb-2">Executive Summary</h4>
+                                    <p className="text-stone-100">{fullAnalysis.executiveSummary}</p>
+                                </div>
+
+                                <div className="grid gap-4 md:grid-cols-2">
+                                    <div className="rounded-2xl border border-white/10 bg-black/20 p-4 md:p-5">
+                                        <h4 className="text-[10px] uppercase tracking-[0.2em] font-black text-stone-400 mb-3">Spending Patterns</h4>
+                                        {fullAnalysis.spendingPatterns.length > 0 ? renderBulletList(fullAnalysis.spendingPatterns) : <p>No spending pattern summary returned.</p>}
+                                    </div>
+                                    <div className="rounded-2xl border border-white/10 bg-black/20 p-4 md:p-5">
+                                        <h4 className="text-[10px] uppercase tracking-[0.2em] font-black text-stone-400 mb-3">Budget Health</h4>
+                                        {fullAnalysis.budgetHealth.length > 0 ? renderBulletList(fullAnalysis.budgetHealth) : <p>No budget health summary returned.</p>}
+                                    </div>
+                                    <div className="rounded-2xl border border-white/10 bg-black/20 p-4 md:p-5">
+                                        <h4 className="text-[10px] uppercase tracking-[0.2em] font-black text-stone-400 mb-3">Waste / Risk Areas</h4>
+                                        {fullAnalysis.wasteRiskAreas.length > 0 ? renderBulletList(fullAnalysis.wasteRiskAreas) : <p>No risk areas returned.</p>}
+                                    </div>
+                                    <div className="rounded-2xl border border-white/10 bg-black/20 p-4 md:p-5">
+                                        <h4 className="text-[10px] uppercase tracking-[0.2em] font-black text-stone-400 mb-3">Recommended Actions</h4>
+                                        {fullAnalysis.recommendedActions.length > 0 ? (
+                                            <ol className="space-y-2 list-decimal list-inside">
+                                                {fullAnalysis.recommendedActions.map((item, index) => (
+                                                    <li key={index}>{item}</li>
+                                                ))}
+                                            </ol>
+                                        ) : <p>No recommended actions returned.</p>}
+                                    </div>
+                                </div>
                             </div>
                         ) : (
                             <div className="flex items-center gap-2 text-yellow-500/80 text-xs font-bold uppercase tracking-widest">

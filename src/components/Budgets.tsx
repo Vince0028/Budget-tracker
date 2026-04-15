@@ -95,7 +95,12 @@ const Budgets: React.FC<Props> = ({ budgets, transactions, onUpdateBudgets, onDe
         .reduce((acc, t) => acc + t.amount, 0);
 
     const totalAllocated = budgets.reduce((acc, b) => acc + b.limit, 0);
-    const unallocated = totalIncome - totalAllocated;
+    const totalSpent = transactions
+        .filter(t => t.type === TransactionType.EXPENSE)
+        .reduce((acc, t) => acc + t.amount, 0);
+
+    const toBeBudgeted = totalIncome - totalAllocated;
+    const moneyLeft = totalIncome - totalSpent;
 
     const handleAdd = () => {
         if (!newBudget.limit) return;
@@ -204,10 +209,19 @@ const Budgets: React.FC<Props> = ({ budgets, transactions, onUpdateBudgets, onDe
                         </div>
                     </div>
 
-                    <div className={`p-6 px-10 rounded-full border-2 transform rotate-[-1deg] transition-all shadow-quirky ${unallocated < 0 ? 'bg-red-50 border-red-200' : 'bg-white dark:bg-stone-800 border-stone-200 dark:border-stone-700'}`}>
-                        <h3 className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-1">To Be Budgeted</h3>
-                        <div className={`text-3xl font-black ${unallocated < 0 ? 'text-red-500' : 'text-stone-800 dark:text-stone-100'}`}>
-                            ₱{unallocated.toLocaleString()}
+                    <div className="flex flex-col sm:flex-row gap-4 items-stretch">
+                        <div className={`p-6 px-10 rounded-full border-2 transform rotate-[-1deg] transition-all shadow-quirky ${toBeBudgeted < 0 ? 'bg-red-50 border-red-200' : 'bg-white dark:bg-stone-800 border-stone-200 dark:border-stone-700'}`}>
+                            <h3 className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-1">To Be Budgeted</h3>
+                            <div className={`text-3xl font-black ${toBeBudgeted < 0 ? 'text-red-500' : 'text-stone-800 dark:text-stone-100'}`}>
+                                ₱{toBeBudgeted.toLocaleString()}
+                            </div>
+                        </div>
+
+                        <div className={`p-6 px-10 rounded-full border-2 transform rotate-[1deg] transition-all shadow-quirky ${moneyLeft < 0 ? 'bg-red-50 border-red-200' : 'bg-white dark:bg-stone-800 border-stone-200 dark:border-stone-700'}`}>
+                            <h3 className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-1">Money Left</h3>
+                            <div className={`text-3xl font-black ${moneyLeft < 0 ? 'text-red-500' : 'text-stone-800 dark:text-stone-100'}`}>
+                                ₱{moneyLeft.toLocaleString()}
+                            </div>
                         </div>
                     </div>
 

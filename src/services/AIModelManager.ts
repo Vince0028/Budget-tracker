@@ -3,12 +3,18 @@ import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 
-// List of models to try in order of preference (cheapest/fastest first, then more capable)
+// List of models to try in order of preference.
 const MODELS = [
+    'gemini-3.1-pro-review',
+    'gemini-3.0-pro-preview',
     'gemini-2.5-flash',
-    'gemini-1.5-flash',
     'gemini-1.5-pro',
+    'gemini-1.5-flash',
 ];
+
+type GenerateOptions = {
+    preferredModels?: string[];
+};
 
 class AIModelManager {
     private client: GoogleGenAI;
@@ -27,12 +33,16 @@ class AIModelManager {
      */
     async generateContent(
         prompt: any,
-        config?: any
+        config?: any,
+        options?: GenerateOptions
     ): Promise<GenerateContentResponse> {
         return this.enqueueRequest(async () => {
             let lastError: any;
+            const preferredModels = options?.preferredModels && options.preferredModels.length > 0
+                ? options.preferredModels
+                : MODELS;
 
-            for (const modelName of MODELS) {
+            for (const modelName of preferredModels) {
                 try {
                     // console.log(`Attempting to generate content with model: ${modelName}`);
                     const model = this.client.models;

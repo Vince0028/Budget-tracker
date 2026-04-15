@@ -2,6 +2,26 @@ import { Type } from "@google/genai";
 import { Transaction, TransactionType, Budget } from "../types";
 import { aiManager } from "./AIModelManager";
 
+export interface SpendingAdviceResponse {
+  quickVerdict: string;
+  biggestLeak: string;
+  nextMoves: string[];
+}
+
+export interface SpendingForecastResponse {
+  estimate: number;
+  basis: string;
+  reasoning: string;
+}
+
+export interface FinancialAnalysisResponse {
+  executiveSummary: string;
+  spendingPatterns: string[];
+  budgetHealth: string[];
+  wasteRiskAreas: string[];
+  recommendedActions: string[];
+}
+
 export const parseReceiptImage = async (base64Image: string): Promise<Partial<Transaction>> => {
   try {
     const response = await aiManager.generateContent({
@@ -42,55 +62,75 @@ export const parseReceiptImage = async (base64Image: string): Promise<Partial<Tr
   }
 };
 
-export const getSpendingAdvice = async (transactions: Transaction[], unallocated: number): Promise<string> => {
+export const getSpendingAdvice = async (transactions: Transaction[], unallocated: number): Promise<SpendingAdviceResponse> => {
   const summary = transactions.slice(0, 30).map(t =>
     `${t.date}: ${t.vendor} (${t.category}) - ₱${t.amount} [${t.type}]`
   ).join('\n');
 
   try {
     const response = await aiManager.generateContent({
-      contents: `History:\n${summary}\n\nCurrent Unallocated Funds: ₱${unallocated}\n\nProvide 3 very short, straight-to-the-point actionable tips. No "witty intros" or fluff. Format as a simple bulleted list.`,
+      contents: `History:\n${summary}\n\nCurrent To Be Budgeted: ₱${unallocated}\n\nReturn JSON only with this shape:\n{\n  "quickVerdict": "one short sentence",\n  "biggestLeak": "one short sentence",\n  "nextMoves": ["item 1", "item 2", "item 3"]\n}\n\nKeep each field short, practical, and specific to the data.`,
     }, {
-      systemInstruction: "You are a concise financial advisor. You do not waste time with pleasantries. You give 3 direct, actionable tips based on the data. Max 1-2 sentences per tip.",
-    });
-    return response.text || "No insights available right now.";
-  } catch (e) {
-    console.error(e);
-    return "Our AI advisor is taking a nap. Try again later.";
-  }
-};
-
-export const predictNextMonth = async (transactions: Transaction[]): Promise<{ prediction: number, reasoning: string }> => {
-  const expenses = transactions.filter(t => t.type === TransactionType.EXPENSE);
-  if (expenses.length === 0) return { prediction: 0, reasoning: "No expenses to analyze yet." };
-  const total = expenses.reduce((acc, t) => acc + t.amount, 0);
-
-  try {
-    const response = await aiManager.generateContent({
-      contents: `The user spent ₱${total} over ${expenses.length} transactions. Predict next month's total spending.`,
-    }, {
-      responseMimeType: 'application/json',
+      responseMimeType: "application/json",
       responseSchema: {
         type: Type.OBJECT,
         properties: {
-          prediction: { type: Type.NUMBER, description: "Predicted amount" },
-          reasoning: { type: Type.STRING, description: "Brief explanation" }
+          quickVerdict: { type: Type.STRING },
+          biggestLeak: { type: Type.STRING },
+          nextMoves: { type: Type.ARRAY, items: { type: Type.STRING } },
         },
-        required: ["prediction", "reasoning"]
-      }
+        required: ["quickVerdict", "biggestLeak", "nextMoves"],
+      },
+      systemInstruction: "You are a concise financial advisor. You are blunt, structured, and highly readable. Use markdown headings and bullets. No fluff.",
+    }, {
+      preferredModels: ['gemini-2.5-flash', 'gemini-3.0-pro-preview', 'gemini-3.1-pro-review'],
     });
-    const data = JSON.parse(response.text || "{}");
+    const data = JSON.parse(response.text || '{}');
     return {
-      prediction: data.prediction || 0,
-      reasoning: data.reasoning || "Insufficient data."
+      quickVerdict: data.quickVerdict || 'No insights available right now.',
+      biggestLeak: data.biggestLeak || 'No major spending leak detected.',
+      nextMoves: Array.isArray(data.nextMoves) ? data.nextMoves.slice(0, 3) : [],
     };
   } catch (e) {
-    console.error("Prediction Error:", e);
-    return { prediction: 0, reasoning: "Could not generate a prediction." };
+    console.error(e);
+    return {
+      quickVerdict: 'Our AI advisor is taking a nap. Try again later.',
+      biggestLeak: '',
+      nextMoves: [],
+    };
   }
+};
+
+export const predictNextMonth = async (transactions: Transaction[]): Promise<SpendingForecastResponse> => {
+  const expenses = transactions.filter(t => t.type === TransactionType.EXPENSE);
+  if (expenses.length === 0) return { estimate: 0, basis: 'No expense data yet.', reasoning: 'No expenses to analyze yet.' };
+
+  const now = new Date();
+  const currentMonthExpenses = expenses.filter(t => {
+    const date = new Date(t.date);
+    return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
+  });
+
+  const currentMonthSpent = currentMonthExpenses.reduce((acc, t) => acc + t.amount, 0);
+  const daysElapsed = Math.max(1, now.getDate());
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+
+  const estimatedMonthlySpend = currentMonthSpent > 0
+    ? Math.round((currentMonthSpent / daysElapsed) * daysInMonth)
+    : Math.round(expenses.reduce((acc, t) => acc + t.amount, 0) / Math.max(1, new Set(expenses.map(t => new Date(t.date).getFullYear() + '-' + new Date(t.date).getMonth())).size));
+
+  return {
+    estimate: estimatedMonthlySpend,
+    basis: currentMonthSpent > 0
+      ? `Based on this month's spending pace: ₱${currentMonthSpent.toLocaleString()} so far across ${currentMonthExpenses.length} expenses.`
+      : `Based on your historical average monthly spend of about ₱${estimatedMonthlySpend.toLocaleString()}.`,
+    reasoning: currentMonthSpent > 0
+      ? 'This estimate uses only the current month and projects the rest of the month from the pace so far.'
+      : 'No current-month spending exists yet, so the estimate falls back to your historical monthly average.'
+  };
 }
 
-export const analyzeEverything = async (transactions: Transaction[], budgets: Budget[]): Promise<string> => {
+export const analyzeEverything = async (transactions: Transaction[], budgets: Budget[]): Promise<FinancialAnalysisResponse> => {
   const transactionSummary = transactions.map(t =>
     `${t.date}: ${t.vendor} (${t.category}) - ₱${t.amount} [${t.type}]`
   ).join('\n');
@@ -101,13 +141,40 @@ export const analyzeEverything = async (transactions: Transaction[], budgets: Bu
 
   try {
     const response = await aiManager.generateContent({
-      contents: `Analyze the following financial data and provide a comprehensive report.\n\nTransactions:\n${transactionSummary}\n\nBudgets:\n${budgetSummary}\n\nProvide insights on spending habits, budget adherence, and potential savings.`,
+      contents: `Analyze the following financial data and return JSON only.\n\nTransactions:\n${transactionSummary}\n\nBudgets:\n${budgetSummary}\n\nReturn this shape exactly:\n{\n  "executiveSummary": "short summary",\n  "spendingPatterns": ["point 1", "point 2"],\n  "budgetHealth": ["point 1", "point 2"],\n  "wasteRiskAreas": ["point 1", "point 2"],\n  "recommendedActions": ["step 1", "step 2", "step 3"]\n}\n\nKeep it organized, specific, and concise. No markdown tables, no ascii decoration, no filler. Use Philippine Pesos (₱) in any amount mention.`,
     }, {
-      systemInstruction: "You are a detailed and insightful financial analyst. Provide a structured report with markdown formatting. Use Philippine Pesos (₱) for all monetary values.",
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          executiveSummary: { type: Type.STRING },
+          spendingPatterns: { type: Type.ARRAY, items: { type: Type.STRING } },
+          budgetHealth: { type: Type.ARRAY, items: { type: Type.STRING } },
+          wasteRiskAreas: { type: Type.ARRAY, items: { type: Type.STRING } },
+          recommendedActions: { type: Type.ARRAY, items: { type: Type.STRING } },
+        },
+        required: ["executiveSummary", "spendingPatterns", "budgetHealth", "wasteRiskAreas", "recommendedActions"],
+      },
+      systemInstruction: "You are a detailed financial analyst. Output structured JSON only. Be concise, direct, and specific.",
+    }, {
+      preferredModels: ['gemini-3.1-pro-review', 'gemini-3.0-pro-preview', 'gemini-2.5-flash'],
     });
-    return response.text || "Unable to generate analysis.";
+    const data = JSON.parse(response.text || '{}');
+    return {
+      executiveSummary: data.executiveSummary || 'Unable to generate analysis.',
+      spendingPatterns: Array.isArray(data.spendingPatterns) ? data.spendingPatterns : [],
+      budgetHealth: Array.isArray(data.budgetHealth) ? data.budgetHealth : [],
+      wasteRiskAreas: Array.isArray(data.wasteRiskAreas) ? data.wasteRiskAreas : [],
+      recommendedActions: Array.isArray(data.recommendedActions) ? data.recommendedActions.slice(0, 3) : [],
+    };
   } catch (error) {
     console.error("Gemini Analysis Error:", error);
-    return "Error analyzing data.";
+    return {
+      executiveSummary: 'Error analyzing data.',
+      spendingPatterns: [],
+      budgetHealth: [],
+      wasteRiskAreas: [],
+      recommendedActions: [],
+    };
   }
 };
