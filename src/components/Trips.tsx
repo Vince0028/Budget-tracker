@@ -3,7 +3,7 @@ import { TripPool } from '../types';
 import { QButton, QCard, QInput, QSelect } from './UI/QuirkyComponents';
 import Modal from './UI/Modal';
 import ConfirmModal from './ConfirmModal';
-import { CalendarClock, Plus, Users, WalletCards, MinusCircle, Trash2 } from 'lucide-react';
+import { CalendarClock, Plus, Users, WalletCards, MinusCircle, Trash2, TriangleAlert, Pencil } from 'lucide-react';
 
 interface Props {
   pools: TripPool[];
@@ -40,6 +40,7 @@ const calculateWeeksSince = (startDate: string): number => {
 
 const Trips: React.FC<Props> = ({ pools, onAddPool, onUpdatePool, onDeletePool, onRunAutoCharges }) => {
   const [showAddPool, setShowAddPool] = useState(false);
+  const [createPoolError, setCreatePoolError] = useState('');
 
   const [newPool, setNewPool] = useState({
     name: '',
@@ -73,12 +74,18 @@ const Trips: React.FC<Props> = ({ pools, onAddPool, onUpdatePool, onDeletePool, 
   }, [pools]);
 
   const handleCreatePool = () => {
-    const targetAmount = Number(newPool.targetAmount);
-    if (!newPool.name.trim() || !Number.isFinite(targetAmount) || targetAmount <= 0) return;
+    const trimmedName = newPool.name.trim();
+    if (!trimmedName) {
+      setCreatePoolError('Trip name is required.');
+      return;
+    }
+
+    const parsedTarget = Number(newPool.targetAmount);
+    const targetAmount = Number.isFinite(parsedTarget) && parsedTarget > 0 ? parsedTarget : 0;
 
     onAddPool({
       id: crypto.randomUUID(),
-      name: newPool.name.trim(),
+      name: trimmedName,
       targetAmount,
       incrementAmount: parseAtLeast(newPool.incrementAmount, 50, 50),
       autoChargeEnabled: newPool.autoChargeEnabled,
@@ -91,6 +98,7 @@ const Trips: React.FC<Props> = ({ pools, onAddPool, onUpdatePool, onDeletePool, 
     });
 
     setShowAddPool(false);
+    setCreatePoolError('');
     setNewPool({
       name: '',
       targetAmount: '',
@@ -224,19 +232,25 @@ const Trips: React.FC<Props> = ({ pools, onAddPool, onUpdatePool, onDeletePool, 
         </QButton>
       </div>
 
-      <Modal isOpen={showAddPool} onClose={() => setShowAddPool(false)} title="Create Trip Fund">
+      <Modal isOpen={showAddPool} onClose={() => {
+        setShowAddPool(false);
+        setCreatePoolError('');
+      }} title="Create Trip Fund">
         <div className="space-y-4">
           <QInput
             label="Trip Name"
             placeholder="e.g. Batangas Swimming Trip"
             value={newPool.name}
-            onChange={e => setNewPool(prev => ({ ...prev, name: e.target.value }))}
+            onChange={e => {
+              setCreatePoolError('');
+              setNewPool(prev => ({ ...prev, name: e.target.value }));
+            }}
           />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <QInput
-              label="Target Amount"
+              label="Target Amount (Optional)"
               type="number"
-              min={1}
+              min={0}
               value={newPool.targetAmount}
               onChange={e => setNewPool(prev => ({ ...prev, targetAmount: e.target.value }))}
             />
@@ -303,8 +317,15 @@ const Trips: React.FC<Props> = ({ pools, onAddPool, onUpdatePool, onDeletePool, 
             </div>
           )}
 
+          {createPoolError && (
+            <p className="text-sm font-bold text-red-500">{createPoolError}</p>
+          )}
+
           <div className="flex justify-end gap-2">
-            <QButton variant="ghost" onClick={() => setShowAddPool(false)}>Cancel</QButton>
+            <QButton variant="ghost" onClick={() => {
+              setShowAddPool(false);
+              setCreatePoolError('');
+            }}>Cancel</QButton>
             <QButton onClick={handleCreatePool}>Create</QButton>
           </div>
         </div>
@@ -373,6 +394,13 @@ const TripPoolCard: React.FC<{
   const [autoChargeInput, setAutoChargeInput] = useState(String(pool.autoChargeAmount));
   const [customTargetMember, setCustomTargetMember] = useState<{ id: string; name: string } | null>(null);
   const [customPaymentAmount, setCustomPaymentAmount] = useState(String(Math.max(50, pool.incrementAmount || 50)));
+  const [editMemberForm, setEditMemberForm] = useState<{
+    id: string;
+    name: string;
+    charged: string;
+    paid: string;
+    error: string;
+  } | null>(null);
   const [pendingConfirm, setPendingConfirm] = useState<
     | { type: 'delete-trip' }
     | { type: 'charge-all' }
@@ -476,6 +504,37 @@ const TripPoolCard: React.FC<{
 
   const confirmCopy = getConfirmCopy();
 
+  const saveEditedMember = () => {
+    if (!editMemberForm) return;
+
+    const trimmedName = editMemberForm.name.trim();
+    if (!trimmedName) {
+      setEditMemberForm(prev => prev ? { ...prev, error: 'Member name is required.' } : prev);
+      return;
+    }
+
+    const chargedValue = Number(editMemberForm.charged);
+    const paidValue = Number(editMemberForm.paid);
+    const charged = Number.isFinite(chargedValue) ? Math.max(0, chargedValue) : 0;
+    const paid = Number.isFinite(paidValue) ? Math.max(0, paidValue) : 0;
+
+    onUpdatePool({
+      ...pool,
+      members: pool.members.map(member =>
+        member.id === editMemberForm.id
+          ? {
+            ...member,
+            name: trimmedName,
+            balance: -charged,
+            totalPaid: paid,
+          }
+          : member
+      ),
+    });
+
+    setEditMemberForm(null);
+  };
+
   return (
     <QCard className="border-b-4 border-r-4">
       <ConfirmModal
@@ -522,6 +581,43 @@ const TripPoolCard: React.FC<{
             >
               Add Payment
             </QButton>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={!!editMemberForm}
+        onClose={() => setEditMemberForm(null)}
+        title={editMemberForm ? `Edit Member - ${editMemberForm.name}` : 'Edit Member'}
+      >
+        <div className="space-y-4">
+          <QInput
+            label="Member Name"
+            value={editMemberForm?.name || ''}
+            onChange={e => setEditMemberForm(prev => prev ? { ...prev, name: e.target.value, error: '' } : prev)}
+          />
+          <QInput
+            label="Charged Amount"
+            type="number"
+            min={0}
+            value={editMemberForm?.charged || '0'}
+            onChange={e => setEditMemberForm(prev => prev ? { ...prev, charged: e.target.value } : prev)}
+          />
+          <QInput
+            label="Paid Amount"
+            type="number"
+            min={0}
+            value={editMemberForm?.paid || '0'}
+            onChange={e => setEditMemberForm(prev => prev ? { ...prev, paid: e.target.value } : prev)}
+          />
+
+          {editMemberForm?.error && (
+            <p className="text-sm font-bold text-red-500">{editMemberForm.error}</p>
+          )}
+
+          <div className="flex justify-end gap-2">
+            <QButton variant="ghost" onClick={() => setEditMemberForm(null)}>Cancel</QButton>
+            <QButton onClick={saveEditedMember}>Save Changes</QButton>
           </div>
         </div>
       </Modal>
@@ -649,7 +745,22 @@ const TripPoolCard: React.FC<{
             const chargeAmount = Math.max(50, pool.autoChargeAmount || 50);
 
             return (
-              <div key={member.id} className="p-3 rounded-xl bg-stone-100 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700 grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-3 items-center">
+              <div key={member.id} className="relative p-3 rounded-xl bg-stone-100 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700 grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-3 items-center">
+                <button
+                  type="button"
+                  className="absolute top-2 right-2 text-stone-500 hover:text-stone-800 dark:text-stone-400 dark:hover:text-stone-100 transition-colors"
+                  onClick={() => setEditMemberForm({
+                    id: member.id,
+                    name: member.name,
+                    charged: String(Math.max(0, Math.abs(member.balance))),
+                    paid: String(Math.max(0, member.totalPaid)),
+                    error: '',
+                  })}
+                  title={`Edit ${member.name}`}
+                  aria-label={`Edit ${member.name}`}
+                >
+                  <Pencil size={14} />
+                </button>
                 <div className="min-w-0">
                   <p className="font-bold text-stone-800 dark:text-stone-100">{member.name}</p>
                   <p className="text-xs font-bold uppercase tracking-wider text-red-500">
@@ -673,10 +784,10 @@ const TripPoolCard: React.FC<{
                         const weeksBehind = weeksElapsed - weeksPaidFor;
                         
                         return (
-                          <p className={`text-[11px] font-bold uppercase tracking-wider ${
+                          <p className={`text-[11px] font-bold uppercase tracking-wider flex items-center gap-1 ${
                             weeksBehind > 0 ? 'text-red-500' : weeksBehind < 0 ? 'text-emerald-500' : 'text-stone-400'
                           }`}>
-                            {weeksBehind > 0 ? `⚠️ ${weeksBehind} weeks behind` : weeksBehind < 0 ? `✓ ${Math.abs(weeksBehind)} weeks ahead` : '✓ On schedule'}
+                            {weeksBehind > 0 ? <><TriangleAlert size={12} /> {weeksBehind} weeks behind</> : weeksBehind < 0 ? `✓ ${Math.abs(weeksBehind)} weeks ahead` : '✓ On schedule'}
                           </p>
                         );
                       })()}
