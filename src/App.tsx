@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { AppState, ViewState, Transaction, Budget, UserProfile, CATEGORIES, THEME_COLORS, WishlistItem, TransactionType } from './types';
+import { AppState, ViewState, Transaction, Budget, UserProfile, CATEGORIES, THEME_COLORS, WishlistItem, TransactionType, TripPool, TripMember } from './types';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from './services/supabaseClient';
 import Auth from './components/Auth';
@@ -9,9 +9,82 @@ import Transactions from './components/Transactions';
 import Budgets from './components/Budgets';
 import Wishlist from './components/Wishlist';
 import SmartAdvisor from './components/SmartAdvisor';
+import Trips from './components/Trips';
 import { QButton } from './components/UI/QuirkyComponents';
-import { LayoutDashboard, Receipt, PieChart, BrainCircuit, Moon, Sun, Shield, Gift, LogOut } from 'lucide-react';
+import { LayoutDashboard, Receipt, PieChart, BrainCircuit, Moon, Sun, Shield, Gift, LogOut, Users } from 'lucide-react';
 import VantaBackground from './components/UI/VantaBackground';
+
+const normalizeTripMember = (raw: any): TripMember => ({
+  id: String(raw?.id || crypto.randomUUID()),
+  name: String(raw?.name || 'Unnamed'),
+  balance: Number(raw?.balance || 0),
+  totalPaid: Number(raw?.totalPaid || 0),
+});
+
+const normalizeTripPool = (raw: any): TripPool => ({
+  id: String(raw?.id || crypto.randomUUID()),
+  user_id: raw?.user_id,
+  name: String(raw?.name || 'Trip Fund'),
+  targetAmount: Number(raw?.target_amount || 0),
+  incrementAmount: Math.max(50, Number(raw?.increment_amount || 50)),
+  autoChargeEnabled: Boolean(raw?.auto_charge_enabled),
+  autoChargeAmount: Math.max(50, Number(raw?.auto_charge_amount || 50)),
+  autoChargeWeekday: Number(raw?.auto_charge_weekday ?? 5),
+  chargeStartDate: String(raw?.charge_start_date || new Date().toISOString()),
+  lastAutoChargeAt: raw?.last_auto_charge_at || null,
+  createdAt: String(raw?.created_at || new Date().toISOString()),
+  members: Array.isArray(raw?.members) ? raw.members.map(normalizeTripMember) : [],
+});
+
+const toTripPoolRow = (pool: TripPool, userId: string) => ({
+  id: pool.id,
+  user_id: userId,
+  name: pool.name,
+  target_amount: pool.targetAmount,
+  increment_amount: Math.max(50, pool.incrementAmount),
+  auto_charge_enabled: pool.autoChargeEnabled,
+  auto_charge_amount: Math.max(50, pool.autoChargeAmount),
+  auto_charge_weekday: pool.autoChargeWeekday,
+  charge_start_date: pool.chargeStartDate,
+  last_auto_charge_at: pool.lastAutoChargeAt || null,
+  created_at: pool.createdAt,
+  members: pool.members,
+});
+
+const applyScheduledChargeCatchup = (pool: TripPool, now: Date): TripPool => {
+  if (!pool.autoChargeEnabled || pool.members.length === 0) return pool;
+
+  const anchor = new Date(pool.lastAutoChargeAt || pool.createdAt);
+  if (Number.isNaN(anchor.getTime())) return pool;
+
+  const start = new Date(anchor);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(now);
+  end.setHours(0, 0, 0, 0);
+
+  if (end < start) return pool;
+
+  let runs = 0;
+  const cursor = new Date(start);
+  cursor.setDate(cursor.getDate() + 1);
+
+  while (cursor <= end) {
+    if (cursor.getDay() === pool.autoChargeWeekday) runs += 1;
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  if (runs === 0) return pool;
+
+  const totalCharge = runs * Math.max(50, pool.autoChargeAmount);
+  return {
+    ...pool,
+    members: pool.members.map(member => ({
+      ...member,
+      balance: member.balance - totalCharge,
+    })),
+    lastAutoChargeAt: now.toISOString(),
+  };
+};
 
 const PrivacyModal: React.FC<{ onClose: () => void }> = ({ onClose }) => (
   <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
@@ -55,6 +128,11 @@ const TutorialModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       title: "Wishlist",
       desc: "The Gift icon. See something you want? add it here. Prioritize your wants and turn them into goals.",
       icon: <Gift size={64} className="text-stone-700 dark:text-stone-200 mb-4" />
+    },
+    {
+      title: "Trips",
+      desc: "The Users icon. Create a group trip fund, track each member's payments, and auto-charge weekly dues like every Friday.",
+      icon: <Users size={64} className="text-stone-700 dark:text-stone-200 mb-4" />
     },
     {
       title: "Oracle (Smart Advisor)",
@@ -119,6 +197,7 @@ const App: React.FC = () => {
     transactions: [],
     budgets: [],
     wishlist: [],
+    tripPools: [],
     user: { name: 'Guest', email: '', currency: 'PHP' },
     darkMode: false,
   });
@@ -131,13 +210,26 @@ const App: React.FC = () => {
       const { data: transactions } = await supabase.from('transactions').select('*').order('date', { ascending: false }).order('order_index', { ascending: true });
       const { data: budgets } = await supabase.from('budgets').select('*');
       const { data: wishlist } = await supabase.from('wishlist_items').select('*');
+      const { data: tripPools } = await supabase.from('trip_pools').select('*').order('created_at', { ascending: false });
       const { data: profile } = await supabase.from('user_profiles').select('*').eq('id', user.id).single();
+
+      const normalizedTripPools = (tripPools || []).map(normalizeTripPool);
+      const now = new Date();
+      const withCatchup = normalizedTripPools.map(pool => applyScheduledChargeCatchup(pool, now));
+      const changedPools = withCatchup.filter((pool, idx) => JSON.stringify(pool) !== JSON.stringify(normalizedTripPools[idx]));
+
+      if (changedPools.length > 0) {
+        await Promise.all(
+          changedPools.map(pool => supabase.from('trip_pools').upsert(toTripPoolRow(pool, user.id)))
+        );
+      }
 
       setState(prev => ({
         ...prev,
         transactions: transactions as Transaction[] || [],
         budgets: budgets as Budget[] || [],
         wishlist: wishlist as WishlistItem[] || [],
+        tripPools: withCatchup,
         user: profile ? { name: profile.name, email: profile.email, currency: profile.currency } : prev.user
       }));
 
@@ -156,7 +248,7 @@ const App: React.FC = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       if (session) fetchData();
-      else setState(prev => ({ ...prev, transactions: [], budgets: [], wishlist: [] }));
+      else setState(prev => ({ ...prev, transactions: [], budgets: [], wishlist: [], tripPools: [] }));
     });
     return () => subscription.unsubscribe();
   }, []);
@@ -225,6 +317,59 @@ const App: React.FC = () => {
         console.error("Failed to promote:", error);
       }
     }
+  };
+
+  const addTripPool = async (pool: TripPool) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { error } = await supabase.from('trip_pools').upsert(toTripPoolRow(pool, user.id));
+    if (error) {
+      console.error('Error creating trip pool:', error);
+      return;
+    }
+
+    setState(prev => ({ ...prev, tripPools: [pool, ...prev.tripPools] }));
+  };
+
+  const updateTripPool = async (pool: TripPool) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { error } = await supabase.from('trip_pools').upsert(toTripPoolRow(pool, user.id));
+    if (error) {
+      console.error('Error updating trip pool:', error);
+      return;
+    }
+
+    setState(prev => ({
+      ...prev,
+      tripPools: prev.tripPools.map(existing => (existing.id === pool.id ? pool : existing)),
+    }));
+  };
+
+  const deleteTripPool = async (id: string) => {
+    const { error } = await supabase.from('trip_pools').delete().eq('id', id);
+    if (error) {
+      console.error('Error deleting trip pool:', error);
+      return;
+    }
+
+    setState(prev => ({ ...prev, tripPools: prev.tripPools.filter(pool => pool.id !== id) }));
+  };
+
+  const runScheduledTripCharges = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const now = new Date();
+    const updatedPools = state.tripPools.map(pool => applyScheduledChargeCatchup(pool, now));
+    const changedPools = updatedPools.filter((pool, idx) => JSON.stringify(pool) !== JSON.stringify(state.tripPools[idx]));
+
+    if (changedPools.length === 0) return;
+
+    setState(prev => ({ ...prev, tripPools: updatedPools }));
+    await Promise.all(changedPools.map(pool => supabase.from('trip_pools').upsert(toTripPoolRow(pool, user.id))));
   };
 
   /* ... transaction/budget handlers ... */
@@ -541,6 +686,7 @@ const App: React.FC = () => {
           <NavItem view="transactions" icon={Receipt} label="Ledger" />
           <NavItem view="budgets" icon={PieChart} label="Allocations" />
           <NavItem view="wishlist" icon={Gift} label="Wishlist" />
+          <NavItem view="trips" icon={Users} label="Trips" />
           <NavItem view="advisor" icon={BrainCircuit} label="Oracle" />
         </nav>
 
@@ -583,6 +729,7 @@ const App: React.FC = () => {
             {currentView === 'transactions' && <Transactions transactions={state.transactions} budgets={state.budgets} onAdd={addTransaction} onDelete={queueDeleteTransaction} onReorder={handleReorder} pendingDeletes={pendingTransactionDeletes} onUndoDelete={undoDeleteTransaction} />}
             {currentView === 'budgets' && <Budgets budgets={state.budgets} transactions={state.transactions} onUpdateBudgets={updateBudgets} onDeleteBudget={queueDeleteBudget} pendingDeletes={pendingBudgetDeletes} onUndoDelete={undoDeleteBudget} />}
             {currentView === 'wishlist' && <Wishlist wishlist={state.wishlist} unallocatedCash={unallocated} onAdd={addWishlist} onDelete={queueDeleteWishlist} onPromote={promoteToBudget} onUpdateWishlist={updateWishlist} pendingDeletes={pendingWishlistDeletes} onUndoDelete={undoDeleteWishlist} />}
+            {currentView === 'trips' && <Trips pools={state.tripPools} onAddPool={addTripPool} onUpdatePool={updateTripPool} onDeletePool={deleteTripPool} onRunAutoCharges={runScheduledTripCharges} />}
             {currentView === 'advisor' && <SmartAdvisor transactions={state.transactions} budgets={state.budgets} />}
           </div>
         </div>
@@ -594,6 +741,7 @@ const App: React.FC = () => {
         <MobileNavItem view="transactions" icon={Receipt} label="Ledger" />
         <MobileNavItem view="budgets" icon={PieChart} label="Allocations" />
         <MobileNavItem view="wishlist" icon={Gift} label="Wishlist" />
+        <MobileNavItem view="trips" icon={Users} label="Trips" />
         <MobileNavItem view="advisor" icon={BrainCircuit} label="Oracle" />
       </nav>
 

@@ -34,6 +34,28 @@ export interface WishlistItem {
   note?: string;
 }
 
+export interface TripMember {
+  id: string;
+  name: string;
+  balance: number;
+  totalPaid: number;
+}
+
+export interface TripPool {
+  id: string;
+  user_id?: string;
+  name: string;
+  targetAmount: number;
+  incrementAmount: number;
+  autoChargeEnabled: boolean;
+  autoChargeAmount: number;
+  autoChargeWeekday: number;
+  chargeStartDate: string;
+  lastAutoChargeAt?: string | null;
+  createdAt: string;
+  members: TripMember[];
+}
+
 export interface UserProfile {
   name: string;
   email: string;
@@ -44,11 +66,12 @@ export interface AppState {
   transactions: Transaction[];
   budgets: Budget[];
   wishlist: WishlistItem[];
+  tripPools: TripPool[];
   user: UserProfile;
   darkMode: boolean;
 }
 
-export type ViewState = 'dashboard' | 'transactions' | 'budgets' | 'advisor' | 'wishlist';
+export type ViewState = 'dashboard' | 'transactions' | 'budgets' | 'advisor' | 'wishlist' | 'trips';
 
 
 export const EXPENSE_CATEGORIES = [
