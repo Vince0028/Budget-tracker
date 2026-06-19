@@ -54,6 +54,7 @@ export interface TripPool {
   lastAutoChargeAt?: string | null;
   createdAt: string;
   members: TripMember[];
+  isEnded?: boolean;
 }
 
 export interface UserProfile {

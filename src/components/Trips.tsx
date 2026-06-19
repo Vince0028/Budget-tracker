@@ -3,7 +3,7 @@ import { TripPool } from '../types';
 import { QButton, QCard, QInput, QSelect } from './UI/QuirkyComponents';
 import Modal from './UI/Modal';
 import ConfirmModal from './ConfirmModal';
-import { CalendarClock, Plus, Users, WalletCards, MinusCircle, Trash2, TriangleAlert, Pencil } from 'lucide-react';
+import { CalendarClock, Plus, Users, WalletCards, MinusCircle, Trash2, TriangleAlert, Pencil, CheckCircle, RotateCcw } from 'lucide-react';
 
 interface Props {
   pools: TripPool[];
@@ -407,6 +407,8 @@ const TripPoolCard: React.FC<{
     | { type: 'remove-member'; memberId: string; memberName: string }
     | { type: 'charge-member'; memberId: string; memberName: string; amount: number }
     | { type: 'custom-pay'; memberId: string; memberName: string; amount: number }
+    | { type: 'end-trip' }
+    | { type: 'reopen-trip' }
     | null
   >(null);
 
@@ -450,6 +452,24 @@ const TripPoolCard: React.FC<{
       };
     }
 
+    if (pendingConfirm.type === 'end-trip') {
+      return {
+        title: 'End Trip?',
+        message: 'This will mark the trip as ended and pause auto-charges. You can still settle balances.',
+        confirmText: 'Yes, End Trip',
+        variant: 'primary' as const,
+      };
+    }
+    
+    if (pendingConfirm.type === 'reopen-trip') {
+      return {
+        title: 'Reopen Trip?',
+        message: 'This will reopen the trip and resume operations.',
+        confirmText: 'Yes, Reopen',
+        variant: 'primary' as const,
+      };
+    }
+
     if (pendingConfirm.type === 'remove-member') {
       return {
         title: 'Remove Member?',
@@ -486,6 +506,16 @@ const TripPoolCard: React.FC<{
 
     if (pendingConfirm.type === 'charge-all') {
       onChargeAllMembersNow(pool);
+      return;
+    }
+
+    if (pendingConfirm.type === 'end-trip') {
+      onUpdatePoolField(pool, 'isEnded', true);
+      return;
+    }
+
+    if (pendingConfirm.type === 'reopen-trip') {
+      onUpdatePoolField(pool, 'isEnded', false);
       return;
     }
 
@@ -536,7 +566,7 @@ const TripPoolCard: React.FC<{
   };
 
   return (
-    <QCard className="border-b-4 border-r-4">
+    <QCard className={`border-b-4 border-r-4 ${pool.isEnded ? 'opacity-80' : ''}`}>
       <ConfirmModal
         isOpen={!!pendingConfirm}
         onClose={() => setPendingConfirm(null)}
@@ -624,22 +654,42 @@ const TripPoolCard: React.FC<{
 
       <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
         <div>
-          <h3 className="text-2xl font-black text-stone-800 dark:text-stone-100 tracking-tight">{pool.name}</h3>
+          <h3 className="text-2xl font-black text-stone-800 dark:text-stone-100 tracking-tight flex items-center gap-2 flex-wrap">
+            {pool.name}
+            {pool.isEnded && (
+              <span className="text-[10px] bg-stone-200 dark:bg-stone-700 text-stone-600 dark:text-stone-300 px-2 py-1 rounded-md uppercase tracking-widest font-bold">
+                Ended
+              </span>
+            )}
+          </h3>
           <p className="text-xs text-stone-500 uppercase tracking-widest mt-1">
             Target ₱{pool.targetAmount.toLocaleString()} · Remaining ₱{remaining.toLocaleString()}
           </p>
-          {pool.autoChargeEnabled && (
+          {pool.autoChargeEnabled && !pool.isEnded && (
             <p className="text-xs text-stone-400 uppercase tracking-widest mt-2 font-bold">
               Week {calculateWeeksSince(pool.chargeStartDate) + 1} · {pool.autoChargeWeekday === new Date().getDay() ? '📍 Charge Day Today' : `Next charge: ${WEEKDAY_OPTIONS.find(w => w.value === pool.autoChargeWeekday)?.label}`}
             </p>
           )}
         </div>
 
-        <div className="flex gap-2">
-          <QButton variant="secondary" onClick={() => setPendingConfirm({ type: 'charge-all' })}>
-            <MinusCircle size={16} />
-            Charge All Now
-          </QButton>
+        <div className="flex flex-wrap gap-2 justify-end">
+          {!pool.isEnded ? (
+            <QButton variant="secondary" onClick={() => setPendingConfirm({ type: 'end-trip' })}>
+              <CheckCircle size={16} />
+              End Trip
+            </QButton>
+          ) : (
+            <QButton variant="secondary" onClick={() => setPendingConfirm({ type: 'reopen-trip' })}>
+              <RotateCcw size={16} />
+              Reopen
+            </QButton>
+          )}
+          {!pool.isEnded && (
+            <QButton variant="secondary" onClick={() => setPendingConfirm({ type: 'charge-all' })}>
+              <MinusCircle size={16} />
+              Charge All Now
+            </QButton>
+          )}
           <QButton variant="danger" onClick={() => setPendingConfirm({ type: 'delete-trip' })}>
             <Trash2 size={16} />
             Delete
@@ -656,84 +706,89 @@ const TripPoolCard: React.FC<{
         </div>
       </div>
 
-      <div className="mt-6 grid grid-cols-1 lg:grid-cols-4 gap-4 border-t border-stone-200 dark:border-stone-800 pt-4">
-        <QInput
-          label="Quick Add Amount (min 50)"
-          type="number"
-          min={50}
-          step={50}
-          value={incrementInput}
-          onChange={e => setIncrementInput(e.target.value)}
-          onBlur={() => {
-            const normalized = parseAtLeast(incrementInput, 50, pool.incrementAmount);
-            setIncrementInput(String(normalized));
-            onUpdatePoolField(pool, 'incrementAmount', normalized);
-          }}
-        />
-
-        <div className={!pool.autoChargeEnabled ? 'opacity-50 pointer-events-none select-none' : ''}>
-          <QInput
-            label="Auto Charge Amount"
-            type="number"
-            min={50}
-            step={50}
-            value={autoChargeInput}
-            disabled={!pool.autoChargeEnabled}
-            onChange={e => setAutoChargeInput(e.target.value)}
-            onBlur={() => {
-              const normalized = parseAtLeast(autoChargeInput, 50, pool.autoChargeAmount);
-              setAutoChargeInput(String(normalized));
-              onUpdatePoolField(pool, 'autoChargeAmount', normalized);
-            }}
-          />
-        </div>
-
-        <div className={!pool.autoChargeEnabled ? 'opacity-50 pointer-events-none select-none' : ''}>
-          <QSelect
-            label="Weekly Charge Day"
-            value={pool.autoChargeWeekday}
-            disabled={!pool.autoChargeEnabled}
-            onChange={e => onUpdatePoolField(pool, 'autoChargeWeekday', Number(e.target.value))}
-          >
-            {WEEKDAY_OPTIONS.map(option => (
-              <option key={option.value} value={option.value}>{option.label}</option>
-            ))}
-          </QSelect>
-        </div>
-
-        <div className="flex items-end">
-          <label className="inline-flex items-center gap-2 text-sm text-stone-600 dark:text-stone-300">
-            <input
-              type="checkbox"
-              checked={pool.autoChargeEnabled}
-              onChange={e => onUpdatePoolField(pool, 'autoChargeEnabled', e.target.checked)}
+      {!pool.isEnded && (
+        <>
+          <div className="mt-6 grid grid-cols-1 lg:grid-cols-4 gap-4 border-t border-stone-200 dark:border-stone-800 pt-4">
+            <QInput
+              label="Quick Add Amount (min 50)"
+              type="number"
+              min={50}
+              step={50}
+              value={incrementInput}
+              onChange={e => setIncrementInput(e.target.value)}
+              onBlur={() => {
+                const normalized = parseAtLeast(incrementInput, 50, pool.incrementAmount);
+                setIncrementInput(String(normalized));
+                onUpdatePoolField(pool, 'incrementAmount', normalized);
+              }}
             />
-            Auto weekly charge
-          </label>
-        </div>
-      </div>
 
-      <div className="mt-6 border-t border-stone-200 dark:border-stone-800 pt-4">
-        <div className="flex flex-col md:flex-row gap-3 md:items-end">
-          <QInput
-            label="Add Member"
-            value={memberName}
-            onChange={e => setMemberName(e.target.value)}
-            placeholder="e.g. Mark"
-          />
-          <QButton
-            className="h-[42px]"
-            onClick={() => {
-              onAddMember(pool, memberName);
-              setMemberName('');
-            }}
-          >
-            <Plus size={16} />
-            Add Person
-          </QButton>
-        </div>
+            <div className={!pool.autoChargeEnabled ? 'opacity-50 pointer-events-none select-none' : ''}>
+              <QInput
+                label="Auto Charge Amount"
+                type="number"
+                min={50}
+                step={50}
+                value={autoChargeInput}
+                disabled={!pool.autoChargeEnabled}
+                onChange={e => setAutoChargeInput(e.target.value)}
+                onBlur={() => {
+                  const normalized = parseAtLeast(autoChargeInput, 50, pool.autoChargeAmount);
+                  setAutoChargeInput(String(normalized));
+                  onUpdatePoolField(pool, 'autoChargeAmount', normalized);
+                }}
+              />
+            </div>
 
-        <div className="mt-4 space-y-2 max-h-[30rem] overflow-y-auto pr-1">
+            <div className={!pool.autoChargeEnabled ? 'opacity-50 pointer-events-none select-none' : ''}>
+              <QSelect
+                label="Weekly Charge Day"
+                value={pool.autoChargeWeekday}
+                disabled={!pool.autoChargeEnabled}
+                onChange={e => onUpdatePoolField(pool, 'autoChargeWeekday', Number(e.target.value))}
+              >
+                {WEEKDAY_OPTIONS.map(option => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </QSelect>
+            </div>
+
+            <div className="flex items-end">
+              <label className="inline-flex items-center gap-2 text-sm text-stone-600 dark:text-stone-300">
+                <input
+                  type="checkbox"
+                  checked={pool.autoChargeEnabled}
+                  onChange={e => onUpdatePoolField(pool, 'autoChargeEnabled', e.target.checked)}
+                />
+                Auto weekly charge
+              </label>
+            </div>
+          </div>
+
+          <div className="mt-6 border-t border-stone-200 dark:border-stone-800 pt-4">
+            <div className="flex flex-col md:flex-row gap-3 md:items-end">
+              <QInput
+                label="Add Member"
+                value={memberName}
+                onChange={e => setMemberName(e.target.value)}
+                placeholder="e.g. Mark"
+              />
+              <QButton
+                className="h-[42px]"
+                onClick={() => {
+                  onAddMember(pool, memberName);
+                  setMemberName('');
+                }}
+              >
+                <Plus size={16} />
+                Add Person
+              </QButton>
+            </div>
+          </div>
+        </>
+      )}
+
+      <div className={`mt-4 space-y-2 max-h-[30rem] overflow-y-auto pr-1 ${pool.isEnded ? 'border-t border-stone-200 dark:border-stone-800 pt-4' : ''}`}>
           {pool.members.length === 0 && (
             <p className="text-sm text-stone-400 italic">No members yet.</p>
           )}
@@ -772,7 +827,7 @@ const TripPoolCard: React.FC<{
                   <p className={`text-xs font-bold uppercase tracking-wider mt-1 ${member.totalPaid >= Math.abs(member.balance) ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>
                     {member.totalPaid >= Math.abs(member.balance) ? `Settled ✓` : `Still Owes: ₱${(Math.abs(member.balance) - member.totalPaid).toLocaleString()}`}
                   </p>
-                  {pool.autoChargeEnabled && (
+                  {!pool.isEnded && pool.autoChargeEnabled && (
                     <div className="mt-2 space-y-1">
                       <p className="text-[11px] text-stone-400 font-medium">
                         {Math.abs(member.balance) > 0 ? `${Math.round(Math.abs(member.balance) / Math.max(50, pool.autoChargeAmount || 50))} weeks of charges` : 'Caught up'}
@@ -811,27 +866,30 @@ const TripPoolCard: React.FC<{
                     Custom
                   </QButton>
 
-                  <QButton
-                    className="h-10 px-4"
-                    variant="secondary"
-                    onClick={() => setPendingConfirm({ type: 'charge-member', memberId: member.id, memberName: member.name, amount: chargeAmount })}
-                  >
-                    Charge -₱{chargeAmount}
-                  </QButton>
+                  {!pool.isEnded && (
+                    <QButton
+                      className="h-10 px-4"
+                      variant="secondary"
+                      onClick={() => setPendingConfirm({ type: 'charge-member', memberId: member.id, memberName: member.name, amount: chargeAmount })}
+                    >
+                      Charge -₱{chargeAmount}
+                    </QButton>
+                  )}
 
-                  <QButton
-                    className="h-10 px-4"
-                    variant="danger"
-                    onClick={() => setPendingConfirm({ type: 'remove-member', memberId: member.id, memberName: member.name })}
-                  >
-                    Remove
-                  </QButton>
+                  {!pool.isEnded && (
+                    <QButton
+                      className="h-10 px-4"
+                      variant="danger"
+                      onClick={() => setPendingConfirm({ type: 'remove-member', memberId: member.id, memberName: member.name })}
+                    >
+                      Remove
+                    </QButton>
+                  )}
                 </div>
               </div>
             );
             })}
         </div>
-      </div>
     </QCard>
   );
 };
