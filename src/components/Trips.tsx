@@ -3,7 +3,7 @@ import { TripPool } from '../types';
 import { QButton, QCard, QInput, QSelect } from './UI/QuirkyComponents';
 import Modal from './UI/Modal';
 import ConfirmModal from './ConfirmModal';
-import { CalendarClock, Plus, Users, WalletCards, MinusCircle, Trash2, TriangleAlert, Pencil, CheckCircle, RotateCcw } from 'lucide-react';
+import { CalendarClock, Plus, Users, WalletCards, MinusCircle, Trash2, TriangleAlert, Pencil, CheckCircle, RotateCcw, Pin } from 'lucide-react';
 
 interface Props {
   pools: TripPool[];
@@ -312,7 +312,7 @@ const Trips: React.FC<Props> = ({ pools, onAddPool, onUpdatePool, onDeletePool, 
             <div className="p-3 rounded-lg bg-stone-100 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700">
               <p className="text-xs text-stone-400 uppercase tracking-widest font-bold mb-2">Schedule Preview</p>
               <p className="text-sm font-bold text-stone-700 dark:text-stone-200">
-                Week {calculateWeeksSince(newPool.chargeStartDate) + 1} · {newPool.autoChargeWeekday === new Date().getDay() ? '📍 Charge Day Today' : `Next charge: ${WEEKDAY_OPTIONS.find(w => w.value === newPool.autoChargeWeekday)?.label}`}
+                Week {calculateWeeksSince(newPool.chargeStartDate) + 1} · {newPool.autoChargeWeekday === new Date().getDay() ? <span className="inline-flex items-center gap-1"><Pin size={14} /> Charge Day Today</span> : `Next charge: ${WEEKDAY_OPTIONS.find(w => w.value === newPool.autoChargeWeekday)?.label}`}
               </p>
             </div>
           )}
@@ -666,8 +666,8 @@ const TripPoolCard: React.FC<{
             Target ₱{pool.targetAmount.toLocaleString()} · Remaining ₱{remaining.toLocaleString()}
           </p>
           {pool.autoChargeEnabled && !pool.isEnded && (
-            <p className="text-xs text-stone-400 uppercase tracking-widest mt-2 font-bold">
-              Week {calculateWeeksSince(pool.chargeStartDate) + 1} · {pool.autoChargeWeekday === new Date().getDay() ? '📍 Charge Day Today' : `Next charge: ${WEEKDAY_OPTIONS.find(w => w.value === pool.autoChargeWeekday)?.label}`}
+            <p className="text-xs text-stone-400 uppercase tracking-widest mt-2 font-bold flex flex-wrap items-center gap-1">
+              Week {calculateWeeksSince(pool.chargeStartDate) + 1} · {pool.autoChargeWeekday === new Date().getDay() ? <span className="inline-flex items-center gap-1 text-stone-800 dark:text-stone-200"><Pin size={12} /> Charge Day Today</span> : `Next charge: ${WEEKDAY_OPTIONS.find(w => w.value === pool.autoChargeWeekday)?.label}`}
             </p>
           )}
         </div>

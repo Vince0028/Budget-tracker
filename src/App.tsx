@@ -34,6 +34,7 @@ const normalizeTripPool = (raw: any): TripPool => ({
   lastAutoChargeAt: raw?.last_auto_charge_at || null,
   createdAt: String(raw?.created_at || new Date().toISOString()),
   members: Array.isArray(raw?.members) ? raw.members.map(normalizeTripMember) : [],
+  isEnded: Boolean(raw?.is_ended),
 });
 
 const toTripPoolRow = (pool: TripPool, userId: string) => ({
@@ -49,6 +50,7 @@ const toTripPoolRow = (pool: TripPool, userId: string) => ({
   last_auto_charge_at: pool.lastAutoChargeAt || null,
   created_at: pool.createdAt,
   members: pool.members,
+  is_ended: Boolean(pool.isEnded),
 });
 
 const applyScheduledChargeCatchup = (pool: TripPool, now: Date): TripPool => {
