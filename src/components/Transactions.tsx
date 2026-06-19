@@ -295,6 +295,10 @@ const Transactions: React.FC<Props> = ({ transactions, budgets, onAdd, onDelete,
   const budgetCategories = budgets.map(b => b.category);
   const allExpenseCategories = Array.from(new Set([...EXPENSE_CATEGORIES, ...budgetCategories]));
 
+  const filteredIncome = filteredTransactions.filter(t => t.type === TransactionType.INCOME).reduce((sum, t) => sum + t.amount, 0);
+  const filteredExpense = filteredTransactions.filter(t => t.type === TransactionType.EXPENSE).reduce((sum, t) => sum + t.amount, 0);
+  const filteredNet = filteredIncome - filteredExpense;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -472,6 +476,29 @@ const Transactions: React.FC<Props> = ({ transactions, budgets, onAdd, onDelete,
           />
         </div>
       </div>
+
+      {filteredTransactions.length > 0 && (
+        <div className="grid grid-cols-3 gap-4 mb-2 animate-in fade-in slide-in-from-top-2">
+          <div className="bg-white/80 dark:bg-stone-900/80 backdrop-blur-sm p-4 rounded-xl border border-stone-200/50 dark:border-stone-700/50 shadow-sm flex flex-col justify-center items-center text-center">
+             <p className="text-[10px] md:text-xs text-stone-500 font-bold uppercase tracking-widest mb-1">Total Income</p>
+             <p className="text-lg md:text-xl font-black text-green-600 dark:text-green-500 break-all leading-tight">
+               +₱{filteredIncome.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+             </p>
+          </div>
+          <div className="bg-white/80 dark:bg-stone-900/80 backdrop-blur-sm p-4 rounded-xl border border-stone-200/50 dark:border-stone-700/50 shadow-sm flex flex-col justify-center items-center text-center">
+             <p className="text-[10px] md:text-xs text-stone-500 font-bold uppercase tracking-widest mb-1">Total Expense</p>
+             <p className="text-lg md:text-xl font-black text-stone-800 dark:text-stone-200 break-all leading-tight">
+               -₱{filteredExpense.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+             </p>
+          </div>
+          <div className="bg-white/80 dark:bg-stone-900/80 backdrop-blur-sm p-4 rounded-xl border border-stone-200/50 dark:border-stone-700/50 shadow-sm flex flex-col justify-center items-center text-center">
+             <p className="text-[10px] md:text-xs text-stone-500 font-bold uppercase tracking-widest mb-1">Net Balance</p>
+             <p className={`text-lg md:text-xl font-black break-all leading-tight ${filteredNet >= 0 ? 'text-green-600 dark:text-green-500' : 'text-red-500 dark:text-red-400'}`}>
+               {filteredNet >= 0 ? '+' : '-'}₱{Math.abs(filteredNet).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+             </p>
+          </div>
+        </div>
+      )}
 
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <div className="grid gap-6">
