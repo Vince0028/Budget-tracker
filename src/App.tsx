@@ -607,11 +607,11 @@ const App: React.FC = () => {
       className={`relative flex items-center h-12 px-3 w-full text-left transition-all duration-200 rounded-xl group/item overflow-hidden whitespace-nowrap
         ${currentView === view
           ? 'bg-stone-800 text-stone-100 dark:bg-stone-100 dark:text-stone-900 shadow-md'
-          : 'text-stone-500 hover:bg-stone-200 dark:hover:bg-stone-800 hover:text-stone-900 dark:hover:text-stone-200'
+          : 'text-stone-600 dark:text-stone-400 hover:bg-stone-200 dark:hover:bg-stone-800 hover:text-stone-900 dark:hover:text-stone-100'
         }`}
     >
       <div className="min-w-[1.5rem] flex justify-center">
-        <Icon size={20} strokeWidth={currentView === view ? 3 : 2} />
+        <Icon size={20} strokeWidth={currentView === view ? 3 : 2.5} />
       </div>
       <span className={`ml-4 font-black text-xs uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity duration-300 delay-75`}>
         {label}
