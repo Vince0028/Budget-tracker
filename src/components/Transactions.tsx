@@ -483,9 +483,11 @@ const Transactions: React.FC<Props> = ({ transactions, budgets, onAdd, onDelete,
           ) : (
             sortedDates.map(date => (
               <div key={date} className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <div className="flex items-center gap-2 mb-2 sticky top-0 bg-stone-50/95 dark:bg-stone-950/95 backdrop-blur-sm p-2 z-10">
-                  <h3 className="text-sm font-bold text-stone-400 uppercase tracking-wider">{new Date(date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</h3>
-                  <div className="h-px bg-stone-200 dark:bg-stone-800 flex-1"></div>
+                <div className="flex items-center gap-3 mb-3 px-1">
+                  <h3 className="text-xs font-black text-stone-700 dark:text-stone-300 bg-white/80 dark:bg-stone-900/80 backdrop-blur-md px-4 py-2 rounded-full shadow-sm border border-stone-200/50 dark:border-stone-700/50 uppercase tracking-widest">
+                    {new Date(date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                  </h3>
+                  <div className="h-px bg-white/40 dark:bg-stone-800/60 flex-1 rounded-full"></div>
                 </div>
                 <SortableContext items={groupedTransactions[date].map(t => t.id)} strategy={verticalListSortingStrategy}>
                   <div className="bg-white dark:bg-stone-900 rounded-lg shadow-sm overflow-hidden">
